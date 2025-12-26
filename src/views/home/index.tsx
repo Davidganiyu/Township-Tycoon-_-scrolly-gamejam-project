@@ -57,6 +57,8 @@ export const HomeView: FC = () => {
 
 
 
+
+
 import {useEffect, useRef, useCallback } from 'react';
 
 // --- CONFIGURATION ---
@@ -78,7 +80,8 @@ const CONFIG = {
 
     maxMachineOutput: 12,
     prices: { bread: 15, ketchup: 40 },
-    unlocks: { ketchupZone: 5000 }
+    unlocks: { ketchupZone: 5000 },
+    salesDelay: 180 // 3 Seconds @ 60fps
 };
 
 // --- AUDIO SYSTEM ---
@@ -320,6 +323,7 @@ type FloatingText = { id: number; x: number; y: number; text: string; life: numb
 type Particle = { id: number; x: number; y: number; vx: number; vy: number; color: string; life: number; size: number; };
 type Patch = { id: number; type: 'CORN'|'TOMATO'; x: number; y: number; timer: number; state: 'RIPE'|'GROWING' };
 type MachineState = { x: number; y: number; processing: boolean; timer: number; queue: number; output: Array<{id: number, x: number, y: number}> };
+type SalesStaffState = { active: boolean; x: number; y: number; timer: number; state: 'IDLE' | 'SELLING' };
 
 // --- MAIN COMPONENT ---
 
@@ -361,8 +365,8 @@ const GameSandbox: FC = () => {
     staffTomato: { active: false, level: 0, x: 400, y: 50, state: 'IDLE', holding: [] as ItemType[], maxHold: 1 },
     
     // SALES STAFF
-    salesStaffBread: { active: false, x: 100, y: 460 },
-    salesStaffKetchup: { active: false, x: 460, y: 460 },
+    salesStaffBread: { active: false, x: 100, y: 460, timer: 0, state: 'IDLE' } as SalesStaffState,
+    salesStaffKetchup: { active: false, x: 460, y: 460, timer: 0, state: 'IDLE' } as SalesStaffState,
     
     truck: { 
         x: -200, y: 530, 
@@ -423,7 +427,7 @@ const GameSandbox: FC = () => {
           return { id: `slot_${i}`, label: `SLOT ${i}`, date: 'Empty' };
       });
       setSaveSlots(slots);
-  }, [gameState]); // Re-check when game state changes (e.g. after exiting)
+  }, [gameState]); 
 
   const spawnText = (x: number, y: number, text: string) => {
       gs.current.floatingTexts.push({ id: Date.now() + Math.random(), x, y, text, life: 60 });
@@ -451,12 +455,21 @@ const GameSandbox: FC = () => {
               s.money = p.money || 0;
               s.lvlStack = p.lvlStack || 0;
               s.lvlSpeed = p.lvlSpeed || 0;
-              s.lvlMachineBread = p.lvlMachine || 0; // Legacy support
+              s.lvlMachineBread = p.lvlMachine || 0; 
               if (p.lvlMachineBread !== undefined) s.lvlMachineBread = p.lvlMachineBread;
               s.lvlMachineSauce = p.lvlMachineSauce || 0;
               s.unlockedKetchup = p.unlockedKetchup || false;
               s.patches = initPatches();
+              s.inventory = p.playerInventory || [];
               
+              // Load Desks
+              s.deskBread.stock = p.deskBreadStock || 0;
+              s.deskKetchup.stock = p.deskKetchupStock || 0;
+
+              // Load Machines
+              if(p.machineBakery) s.machineBakery = p.machineBakery;
+              if(p.machineSauce) s.machineSauce = p.machineSauce;
+
               // Load Staff 1
               if (p.staffCornLevel > 0) {
                   s.staffCorn.active = true;
@@ -470,8 +483,9 @@ const GameSandbox: FC = () => {
                   s.staffTomato.maxHold = p.staffTomatoLevel;
               }
 
-              s.salesStaffBread.active = p.salesBreadActive || false;
-              s.salesStaffKetchup.active = p.salesKetchupActive || false;
+              // Load Sales Staff State Correctly
+              s.salesStaffBread.active = !!p.salesBreadActive;
+              s.salesStaffKetchup.active = !!p.salesKetchupActive;
               
               setGameState('PLAYING');
           } catch(e) { console.error(e); }
@@ -481,14 +495,26 @@ const GameSandbox: FC = () => {
   const startGame = () => {
       initAudio();
       const s = gs.current;
+      // HARD RESET ALL STATE
       s.money = 0; s.lvlStack = 0; s.lvlSpeed = 0; s.lvlMachineBread = 0; s.lvlMachineSauce = 0;
       s.inventory = [];
       s.unlockedKetchup = false;
+      
+      // Reset Staff
       s.staffCorn = { active: false, level: 0, x: 50, y: 50, state: 'IDLE', holding: [], maxHold: 1 };
       s.staffTomato = { active: false, level: 0, x: 400, y: 50, state: 'IDLE', holding: [], maxHold: 1 };
-      s.salesStaffBread = { active: false, x: 100, y: 460 };
-      s.salesStaffKetchup = { active: false, x: 460, y: 460 };
-      s.deskBread.stock = 0; s.deskKetchup.stock = 0;
+      s.salesStaffBread = { active: false, x: 100, y: 460, timer: 0, state: 'IDLE' };
+      s.salesStaffKetchup = { active: false, x: 460, y: 460, timer: 0, state: 'IDLE' };
+      
+      // Reset Machines & Desks
+      s.machineBakery = { x: 250, y: 280, processing: false, timer: 0, queue: 0, output: [] };
+      s.machineSauce = { x: 610, y: 280, processing: false, timer: 0, queue: 0, output: [] };
+      s.deskBread.stock = 0;
+      s.deskKetchup.stock = 0;
+      
+      // Reset Truck
+      s.truck = { x: -200, y: 530, state: 'IDLE', targetX: 0, orders: { bread: 0, ketchup: 0 }, color: '#fbc02d', phrase: '' };
+      
       s.patches = initPatches();
       setGameState('PLAYING');
   };
@@ -506,6 +532,11 @@ const GameSandbox: FC = () => {
           salesBreadActive: s.salesStaffBread.active,
           salesKetchupActive: s.salesStaffKetchup.active,
           unlockedKetchup: s.unlockedKetchup,
+          deskBreadStock: s.deskBread.stock,
+          deskKetchupStock: s.deskKetchup.stock,
+          playerInventory: s.inventory,
+          machineBakery: s.machineBakery,
+          machineSauce: s.machineSauce,
           date: new Date().toLocaleString()
       };
       localStorage.setItem(key, JSON.stringify(data));
@@ -589,7 +620,6 @@ const GameSandbox: FC = () => {
     s.camera.x += (targetCam - s.camera.x) * 0.1;
 
     // --- HIRING ---
-    // Increased range slightly for easier touch
     const checkHire = (zone: {x:number, y:number}, cost: number, action: () => void) => {
         if (Math.abs(s.player.x - (zone.x + 30)) < 60 && Math.abs(s.player.y - (zone.y + 30)) < 60 && s.purchaseCooldown <= 0) {
             if (s.money >= cost) {
@@ -751,12 +781,7 @@ const GameSandbox: FC = () => {
             // Generate Order (RANDOMIZED)
             let wantsBread = Math.random() > 0.5;
             let wantsKetchup = s.unlockedKetchup && Math.random() > 0.5;
-            
-            // Ensure at least one is true
-            if (!wantsBread && !wantsKetchup) {
-                if (s.unlockedKetchup) wantsKetchup = true;
-                else wantsBread = true;
-            }
+            if (!wantsBread && !wantsKetchup) { if (s.unlockedKetchup) wantsKetchup = true; else wantsBread = true; }
 
             s.truck.orders = {
                 bread: wantsBread ? Math.floor(Math.random() * 4) + 1 : 0,
@@ -775,7 +800,7 @@ const GameSandbox: FC = () => {
     else if (s.truck.state === 'DRIVING') {
         const dist = s.truck.targetX - s.truck.x;
         if (Math.abs(dist) < 5) {
-             s.truck.x = s.truck.targetX; // Snap
+             s.truck.x = s.truck.targetX; 
              if (s.truck.targetX === EXIT_X) {
                  s.truck.state = 'IDLE';
              } else {
@@ -792,39 +817,62 @@ const GameSandbox: FC = () => {
         
         let sold = false;
         
-        // Sell Logic
-        const checkSale = (desk: any, type: 'bread'|'ketchup', price: number, staffActive: boolean) => {
-            if (s.truck.orders[type] > 0) {
-                // Sell if desk has stock AND (staff is active OR player is close to desk)
-                // UNIFIED LOGIC: If player is close enough to stock, they are close enough to sell.
+        // Sell Logic (BULK SELL + DELAYED STAFF)
+        const checkSale = (desk: any, type: 'bread'|'ketchup', price: number, salesStaff: SalesStaffState) => {
+            const requiredAmount = s.truck.orders[type];
+            if (requiredAmount > 0) {
                 const playerClose = Math.hypot(s.player.x - desk.x, s.player.y - desk.y) < 60;
                 
-                if (playerClose) manualSellAction = true;
+                // Manual Selling is Instant
+                if (playerClose && desk.stock >= requiredAmount) {
+                    manualSellAction = true;
+                    // Instant Sell for Player
+                    desk.stock -= requiredAmount;
+                    s.truck.orders[type] = 0; 
+                    const totalGain = requiredAmount * price;
+                    s.money += totalGain;
+                    if (soundOn) playSfx('coin');
+                    spawnText(s.truck.x + 50, s.truck.y, `+$${totalGain}`);
+                    s.truck.phrase = getTruckPhrase(s.truck.orders.bread, s.truck.orders.ketchup);
+                    return true;
+                }
 
-                if (desk.stock > 0 && (staffActive || playerClose)) {
-                    if (uiTick % 20 === 0) { // Sell tick
-                        desk.stock--;
-                        s.truck.orders[type]--;
-                        s.money += price;
-                        if (soundOn) playSfx('coin');
-                        spawnText(s.truck.x + 50, s.truck.y, `+$${price}`);
-                        s.truck.phrase = getTruckPhrase(s.truck.orders.bread, s.truck.orders.ketchup);
-                        return true;
+                // Staff Selling (Delayed)
+                if (salesStaff.active && desk.stock >= requiredAmount) {
+                    if (salesStaff.state === 'IDLE') {
+                        salesStaff.state = 'SELLING';
+                        salesStaff.timer = CONFIG.salesDelay;
+                    } else if (salesStaff.state === 'SELLING') {
+                        salesStaff.timer--;
+                        if (salesStaff.timer <= 0) {
+                            salesStaff.state = 'IDLE';
+                            // Sell Execution
+                            desk.stock -= requiredAmount;
+                            s.truck.orders[type] = 0;
+                            const totalGain = requiredAmount * price;
+                            s.money += totalGain;
+                            if (soundOn) playSfx('coin');
+                            spawnText(s.truck.x + 50, s.truck.y, `+$${totalGain}`);
+                            s.truck.phrase = getTruckPhrase(s.truck.orders.bread, s.truck.orders.ketchup);
+                            return true;
+                        }
                     }
+                } else {
+                    // Reset if conditions fail (e.g. ran out of stock mid-wait)
+                    if (salesStaff.state === 'SELLING') salesStaff.state = 'IDLE';
                 }
             }
             return false;
         };
 
-        if (atBread) sold = checkSale(s.deskBread, 'bread', CONFIG.prices.bread, s.salesStaffBread.active);
-        if (atKetchup) sold = checkSale(s.deskKetchup, 'ketchup', CONFIG.prices.ketchup, s.salesStaffKetchup.active);
+        if (atBread) sold = checkSale(s.deskBread, 'bread', CONFIG.prices.bread, s.salesStaffBread);
+        if (atKetchup) sold = checkSale(s.deskKetchup, 'ketchup', CONFIG.prices.ketchup, s.salesStaffKetchup);
 
         // Check if done with current station or all orders
         if (s.truck.orders.bread === 0 && s.truck.orders.ketchup === 0) {
             s.truck.targetX = EXIT_X;
             s.truck.state = 'DRIVING';
         } else if (atBread && s.truck.orders.bread === 0) {
-             // Done with bread, go to ketchup?
              if (s.truck.orders.ketchup > 0) {
                  s.truck.targetX = KETCHUP_STOP_X;
                  s.truck.state = 'DRIVING';
@@ -835,7 +883,7 @@ const GameSandbox: FC = () => {
         }
     }
     
-    setIsSellingManually(manualSellAction);
+    setIsSellingManually(manualSellAction && !s.salesStaffBread.active && !s.salesStaffKetchup.active); 
 
     // --- PARTICLES & UTILS ---
     s.floatingTexts.forEach(t => { t.y -= 1; t.life -= 1; });
@@ -1023,8 +1071,8 @@ const GameSandbox: FC = () => {
             
             {s.staffTomato.active && s.unlockedKetchup && <div className="absolute w-[60px] h-[60px] transition-transform duration-75" style={{ left: s.staffTomato.x - 10, top: s.staffTomato.y, zIndex: Math.floor(s.staffTomato.y) }}><SvgCharacter type="STAFF" capColor={getStaffCapColor(s.staffTomato.level)} /><div className="absolute bottom-[45px] left-1/2 -translate-x-1/2 w-6 flex flex-col-reverse items-center gap-[-10px]">{s.staffTomato.holding.map((t, i) => <div key={i} className="w-6 h-6 -mb-4 drop-shadow-md"><SvgItem type={t} /></div>)}</div></div>}
             
-            {s.salesStaffBread.active && <div className="absolute w-[60px] h-[60px]" style={{ left: 70, top: 400, zIndex: 400 }}><SvgCharacter type="SALES" isSelling={s.truck.state === 'WAITING' && s.truck.orders.bread > 0 && s.deskBread.stock > 0} /></div>}
-            {s.salesStaffKetchup.active && s.unlockedKetchup && <div className="absolute w-[60px] h-[60px]" style={{ left: 430, top: 400, zIndex: 400 }}><SvgCharacter type="SALES" isSelling={s.truck.state === 'WAITING' && s.truck.orders.ketchup > 0 && s.deskKetchup.stock > 0} /></div>}
+            {s.salesStaffBread.active && <div className="absolute w-[60px] h-[60px]" style={{ left: 70, top: 400, zIndex: 400 }}><SvgCharacter type="SALES" isSelling={s.salesStaffBread.state === 'SELLING'} /></div>}
+            {s.salesStaffKetchup.active && s.unlockedKetchup && <div className="absolute w-[60px] h-[60px]" style={{ left: 430, top: 400, zIndex: 400 }}><SvgCharacter type="SALES" isSelling={s.salesStaffKetchup.state === 'SELLING'} /></div>}
 
             <div className="absolute w-[60px] h-[60px]" style={{ left: s.player.x - 10, top: s.player.y, zIndex: Math.floor(s.player.y) }}>
                 <SvgCharacter type="PLAYER" />
