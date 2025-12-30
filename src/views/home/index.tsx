@@ -108,6 +108,9 @@ const CONFIG = {
         { val: 50, cost: 8000 }
     ],
 
+    // Global Upgrades
+    coffeeMachine: [{ val: 0.5, cost: 2000 }, { val: 0.8, cost: 5000 }, { val: 1.2, cost: 10000 }], // Stamina Regen Rate
+
     ACHIEVEMENTS: [
         { id: 'first_steps', name: 'First Steps', desc: 'Harvest your first crop', reward: '100 Gems', condition: (s: any) => s.lifetime.totalMoney > 0 },
         { id: 'big_spender', name: 'Big Spender', desc: 'Spend over $1,000', reward: '500 Gems', condition: (s: any) => s.lifetime.totalMoney >= 1000 },
@@ -123,6 +126,7 @@ const CONFIG = {
         { id: 'hoarder', name: 'Hoarder', desc: 'Hold 5000 Gems', reward: '1,000 Gems', condition: (s: any) => s.gems >= 5000 },
         { id: 'marathon', name: 'Marathon', desc: 'Walk 10,000 Steps', reward: 'Snow Theme', condition: (s: any) => s.lifetime.steps >= 10000 },
         { id: 'mars_explorer', name: 'Mars Explorer', desc: 'Earn $5,000,000', reward: 'Mars Theme', condition: (s: any) => s.lifetime.totalMoney >= 5000000 },
+        { id: 'golden_truck', name: 'Golden Truck', desc: 'Earn $5,000', reward: 'Golden Truck', condition: (s: any) => s.lifetime.totalMoney >= 5000 },
     ]
 };
 
@@ -524,6 +528,16 @@ const SvgItem = ({ type }: { type: ItemType }) => {
             </svg>
         );
     }
+    if (type === 'TRASH_BAG') {
+        return (
+            <svg viewBox="0 0 40 40" className="w-full h-full">
+                <path d="M10 10 L30 10 L35 35 L5 35 Z" fill="#424242" stroke="black" strokeWidth="1" />
+                <path d="M15 5 L25 5 L28 10 L12 10 Z" fill="#616161" stroke="black" strokeWidth="1" />
+                <path d="M15 15 L25 25" stroke="#757575" strokeWidth="1" />
+                <path d="M25 15 L15 25" stroke="#757575" strokeWidth="1" />
+            </svg>
+        );
+    }
     return ( // JUICE
         <svg viewBox="0 0 20 30" className="w-full h-full drop-shadow-md">
             <rect x="5" y="5" width="10" height="20" fill="#ff9800" opacity="0.8" />
@@ -533,7 +547,7 @@ const SvgItem = ({ type }: { type: ItemType }) => {
     );
 };
 
-const SvgMachine = ({ type, working }: { type: 'BAKERY' | 'SAUCE' | 'CHEESE' | 'JUICE' | 'CHOCOLATE', working: boolean }) => {
+const SvgMachine = ({ type, working, jammed }: { type: 'BAKERY' | 'SAUCE' | 'CHEESE' | 'JUICE' | 'CHOCOLATE', working: boolean, jammed?: boolean }) => {
     const mainColor = type === 'BAKERY' ? '#039be5' : type === 'SAUCE' ? '#e53935' : type === 'CHEESE' ? '#ffeb3b' : type === 'JUICE' ? '#ff9800' : '#5d4037';
     const accentColor = type === 'BAKERY' ? '#0277bd' : type === 'SAUCE' ? '#c62828' : type === 'CHEESE' ? '#fbc02d' : type === 'JUICE' ? '#e65100' : '#3e2723';
 
@@ -542,7 +556,7 @@ const SvgMachine = ({ type, working }: { type: 'BAKERY' | 'SAUCE' | 'CHEESE' | '
             <rect x="5" y="40" width="90" height="30" fill="#455a64" rx="4" />
             <rect x="10" y="35" width="80" height="10" fill="#263238" />
             <rect x="25" y="5" width="50" height="40" fill={mainColor} rx="4" stroke={accentColor} strokeWidth="2" />
-            <circle cx="50" cy="25" r="8" fill={working ? "#ff1744" : "#00e676"} className={working ? "animate-pulse" : ""} />
+            <circle cx="50" cy="25" r="8" fill={jammed ? "#000" : (working ? "#ff1744" : "#00e676")} className={working && !jammed ? "animate-pulse" : ""} />
             <path d="M30 5 L20 0 L80 0 L70 5 Z" fill="#cfd8dc" />
             {type === 'SAUCE' && <path d="M35 15 L65 15 L50 35 Z" fill="#b71c1c" opacity="0.3" />}
             {type === 'JUICE' && <rect x="35" y="10" width="30" height="30" fill="white" opacity="0.3" />}
@@ -551,6 +565,13 @@ const SvgMachine = ({ type, working }: { type: 'BAKERY' | 'SAUCE' | 'CHEESE' | '
                     <rect x="30" y="10" width="20" height="20" fill="#8d6e63" />
                     <path d="M30 20 L20 30 L40 30 Z" fill="#8d6e63" />
                 </>
+            )}
+            {jammed && (
+                <g className="animate-pulse">
+                    <path d="M20 10 L80 40" stroke="black" strokeWidth="4" />
+                    <path d="M80 10 L20 40" stroke="black" strokeWidth="4" />
+                    <text x="50" y="60" fontSize="20" textAnchor="middle">⚠️</text>
+                </g>
             )}
         </svg>
     );
@@ -581,16 +602,24 @@ const SvgDesk = () => (
     </svg>
 );
 
-const SvgTruck = ({ color }: { color: string }) => (
+const SvgTruck = ({ color, isGolden }: { color: string, isGolden?: boolean }) => (
     <svg viewBox="0 0 140 70" className="w-full h-full drop-shadow-lg">
+        <defs>
+            <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#FFD700" />
+                <stop offset="50%" stopColor="#FDB931" />
+                <stop offset="100%" stopColor="#FFD700" />
+            </linearGradient>
+        </defs>
         <circle cx="35" cy="60" r="8" fill="#212121" />
         <circle cx="85" cy="60" r="8" fill="#212121" />
         <circle cx="115" cy="60" r="8" fill="#212121" />
-        <path d="M95 30 L135 30 L135 55 L95 55 Z" fill={color} stroke="black" strokeWidth="1" />
+        <path d="M95 30 L135 30 L135 55 L95 55 Z" fill={isGolden ? "url(#goldGradient)" : color} stroke={isGolden ? "#B8860B" : "black"} strokeWidth="1" />
         <path d="M110 30 L135 30 L135 45 L110 45 Z" fill="#b3e5fc" />
-        <rect x="5" y="5" width="90" height="50" fill={color} stroke="black" strokeWidth="1" rx="2" />
+        <rect x="5" y="5" width="90" height="50" fill={isGolden ? "url(#goldGradient)" : color} stroke={isGolden ? "#B8860B" : "black"} strokeWidth="1" rx="2" />
         <rect x="8" y="8" width="84" height="44" fill="black" opacity="0.1" />
         <rect x="90" y="45" width="10" height="5" fill="#555" />
+        {isGolden && <circle cx="10" cy="10" r="2" fill="white" className="animate-ping" />}
     </svg>
 );
 
@@ -634,14 +663,15 @@ const SvgCharacter = ({ type, capColor, isSelling }: { type: 'PLAYER' | 'STAFF' 
 };
 
 // --- TYPES & HELPERS ---
-type ItemType = 'CORN' | 'BREAD' | 'TOMATO' | 'KETCHUP' | 'WHEAT' | 'MILK' | 'CHEESE' | 'ORANGE' | 'JUICE' | 'COCOA' | 'CHOCOLATE';
+type ItemType = 'CORN' | 'BREAD' | 'TOMATO' | 'KETCHUP' | 'WHEAT' | 'MILK' | 'CHEESE' | 'ORANGE' | 'JUICE' | 'COCOA' | 'CHOCOLATE' | 'COFFEE' | 'TRASH_BAG';
 type FloatingText = { id: number; x: number; y: number; text: string; life: number; };
 type Particle = { id: number; x: number; y: number; vx: number; vy: number; color: string; life: number; size: number; };
 type Patch = { id: number; type: 'CORN' | 'TOMATO' | 'WHEAT' | 'COCOA'; x: number; y: number; timer: number; state: 'RIPE' | 'GROWING' };
 type Tree = { id: number; x: number; y: number; state: 'GROWING' | 'RIPE' | 'SHAKING'; timer: number; fruitCount: number };
 type DroppedItem = { id: number; type: ItemType; x: number; y: number; timer: number };
+type StaffState = { active: boolean; level: number; x: number; y: number; targetX: number; targetY: number; state: 'IDLE' | 'MOVING' | 'HARVESTING' | 'DEPOSITING' | 'SLEEP' | 'TIRED' | 'DRINKING'; timer: number; holding: ItemType[]; maxHold: number; stamina: number; maxStamina: number; };
 type Cow = { id: number; x: number; y: number; state: 'IDLE' | 'EATING' | 'MILKING' | 'READY'; timer: number; milk: number };
-type MachineState = { x: number; y: number; processing: boolean; timer: number; queue: number; output: Array<{ id: number, x: number, y: number }> };
+type MachineState = { x: number; y: number; processing: boolean; timer: number; queue: number; output: Array<{ id: number, x: number, y: number }>; trash: number; jammed: boolean; };
 type SalesStaffState = { active: boolean; x: number; y: number; timer: number; state: 'IDLE' | 'SELLING' };
 
 // --- MAIN COMPONENT ---
@@ -663,7 +693,8 @@ const GameSandbox: FC = () => {
     const [saveSlots, setSaveSlots] = useState<{ id: string, label: string, date: string }[]>([]);
     const [isSellingManually, setIsSellingManually] = useState(false);
     const [showTrashConfirm, setShowTrashConfirm] = useState(false);
-    const [settingsTab, setSettingsTab] = useState<'OPTIONS' | 'ACHIEVEMENTS'>('OPTIONS');
+    const [settingsTab, setSettingsTab] = useState<'OPTIONS' | 'ACHIEVEMENTS' | 'ABOUT'>('OPTIONS');
+    const [aboutSubTab, setAboutSubTab] = useState<string | null>(null);
     const [showManagerMenu, setShowManagerMenu] = useState(false);
     const [musicOn, setMusicOn] = useState(() => localStorage.getItem('musicOn') !== 'false');
     const [sfxOn, setSfxOn] = useState(() => localStorage.getItem('sfxOn') !== 'false');
@@ -698,6 +729,7 @@ const GameSandbox: FC = () => {
         lvlMachineJuice: 0,
         lvlMachineChocolate: 0,
         lvlMachineQueue: 0,
+        lvlCoffeeMachine: 0, // Stamina Upgrade
         unlockedKetchup: false,
         unlockedDairy: false,
         unlockedOrchard: false,
@@ -710,6 +742,8 @@ const GameSandbox: FC = () => {
         gems: 0,
         managers: {} as Record<string, number>, // id -> level
         activeManagers: { production: null, logistics: null, sales: null } as { production: string | null, logistics: string | null, sales: string | null },
+        marketTrend: { type: 'NORMAL', resource: null, multiplier: 1, timer: 0, news: null } as { type: 'NORMAL' | 'SURGE' | 'CRASH', resource: ItemType | null, multiplier: number, timer: number, news: string | null },
+        rentTimer: 36000, // 10 minutes at 60fps
 
         // Themes
         activeTheme: 'DEFAULT',
@@ -719,11 +753,11 @@ const GameSandbox: FC = () => {
         player: { x: 160, y: 300 },
 
         // STAFF
-        staffCorn: { active: false, level: 0, x: 50, y: 50, state: 'IDLE', holding: [] as ItemType[], maxHold: 1 },
-        staffTomato: { active: false, level: 0, x: 400, y: 50, state: 'IDLE', holding: [] as ItemType[], maxHold: 1 },
-        staffWheat: { active: false, level: 0, x: 760, y: 50, state: 'IDLE', holding: [] as ItemType[], maxHold: 1 },
-        staffOrchard: { active: false, level: 0, x: 1120, y: 50, state: 'IDLE', holding: [] as ItemType[], maxHold: 1 },
-        staffCocoa: { active: false, level: 0, x: 1480, y: 50, state: 'IDLE', holding: [] as ItemType[], maxHold: 1 },
+        staffCorn: { active: false, level: 0, x: 100, y: 100, targetX: 100, targetY: 100, state: 'IDLE', timer: 0, holding: [] as ItemType[], maxHold: 1, stamina: 100, maxStamina: 100 } as StaffState,
+        staffTomato: { active: false, level: 0, x: 460, y: 100, targetX: 460, targetY: 100, state: 'IDLE', timer: 0, holding: [] as ItemType[], maxHold: 1, stamina: 100, maxStamina: 100 } as StaffState,
+        staffWheat: { active: false, level: 0, x: 820, y: 100, targetX: 820, targetY: 100, state: 'IDLE', timer: 0, holding: [] as ItemType[], maxHold: 1, stamina: 100, maxStamina: 100 } as StaffState,
+        staffOrchard: { active: false, level: 0, x: 1180, y: 100, targetX: 1180, targetY: 100, state: 'IDLE', timer: 0, holding: [] as ItemType[], maxHold: 1, stamina: 100, maxStamina: 100 } as StaffState,
+        staffCocoa: { active: false, level: 0, x: 1540, y: 100, targetX: 1540, targetY: 100, state: 'IDLE', timer: 0, holding: [] as ItemType[], maxHold: 1, stamina: 100, maxStamina: 100 } as StaffState,
 
         // SALES STAFF
         salesStaffBread: { active: false, x: 100, y: 460, timer: 0, state: 'IDLE' } as SalesStaffState,
@@ -740,14 +774,15 @@ const GameSandbox: FC = () => {
             orders: { bread: 0, ketchup: 0, cheese: 0, juice: 0, chocolate: 0 },
             color: '#fbc02d',
             phrase: '',
-            waitTimer: 0
+            waitTimer: 0,
+            isGolden: false
         },
 
-        machineBakery: { x: 250, y: 280, processing: false, timer: 0, queue: 0, output: [] } as MachineState,
-        machineSauce: { x: 610, y: 280, processing: false, timer: 0, queue: 0, output: [] } as MachineState,
-        machineCheese: { x: 970, y: 280, processing: false, timer: 0, queue: 0, output: [] } as MachineState,
-        machineJuice: { x: 1330, y: 280, processing: false, timer: 0, queue: 0, output: [] } as MachineState,
-        machineChocolate: { x: 1690, y: 280, processing: false, timer: 0, queue: 0, output: [] } as MachineState,
+        machineBakery: { x: 250, y: 280, processing: false, timer: 0, queue: 0, output: [], trash: 0, jammed: false } as MachineState,
+        machineSauce: { x: 610, y: 280, processing: false, timer: 0, queue: 0, output: [], trash: 0, jammed: false } as MachineState,
+        machineCheese: { x: 970, y: 280, processing: false, timer: 0, queue: 0, output: [], trash: 0, jammed: false } as MachineState,
+        machineJuice: { x: 1330, y: 280, processing: false, timer: 0, queue: 0, output: [], trash: 0, jammed: false } as MachineState,
+        machineChocolate: { x: 1690, y: 280, processing: false, timer: 0, queue: 0, output: [], trash: 0, jammed: false } as MachineState,
 
         deskBread: { x: 100, y: 460, stock: 0 },
         deskKetchup: { x: 460, y: 460, stock: 0 },
@@ -852,6 +887,17 @@ const GameSandbox: FC = () => {
         };
     }, []);
 
+    // Enter key to close alerts
+    useEffect(() => {
+        const handleEnter = (e: KeyboardEvent) => {
+            if (e.key === 'Enter' && alertMsg) {
+                setAlertMsg(null);
+            }
+        };
+        window.addEventListener('keydown', handleEnter);
+        return () => window.removeEventListener('keydown', handleEnter);
+    }, [alertMsg]);
+
     useEffect(() => {
         // Check autosave
         if (localStorage.getItem(AUTOSAVE_KEY)) setHasSave(true);
@@ -917,6 +963,9 @@ const GameSandbox: FC = () => {
                 s.gems = p.gems || 0;
                 s.managers = p.managers || {};
                 s.activeManagers = p.activeManagers || { production: null, logistics: null, sales: null };
+                s.activeManagers = p.activeManagers || { production: null, logistics: null, sales: null };
+                s.marketTrend = p.marketTrend || { type: 'NORMAL', resource: null, multiplier: 1, timer: 0, news: null };
+                s.rentTimer = p.rentTimer || 36000;
 
                 // Load Themes
                 s.activeTheme = p.activeTheme || 'DEFAULT';
@@ -979,7 +1028,7 @@ const GameSandbox: FC = () => {
         initAudio();
         const s = gs.current;
         // HARD RESET ALL STATE
-        s.money = 0; s.lvlStack = 0; s.lvlSpeed = 0; s.lvlMachineBread = 0; s.lvlMachineSauce = 0; s.lvlMachineCheese = 0; s.lvlMachineJuice = 0; s.lvlMachineChocolate = 0; s.lvlMachineQueue = 0;
+        s.money = 0; s.lvlStack = 0; s.lvlSpeed = 0; s.lvlMachineBread = 0; s.lvlMachineSauce = 0; s.lvlMachineCheese = 0; s.lvlMachineJuice = 0; s.lvlMachineChocolate = 0; s.lvlMachineQueue = 0; s.lvlCoffeeMachine = 0;
         s.inventory = [];
         s.unlockedKetchup = false;
         s.unlockedDairy = false;
@@ -992,17 +1041,19 @@ const GameSandbox: FC = () => {
         s.gems = 0;
         s.managers = {};
         s.activeManagers = { production: null, logistics: null, sales: null };
+        s.marketTrend = { type: 'NORMAL', resource: null, multiplier: 1, timer: 0, news: null };
+        s.rentTimer = 36000;
 
         // Reset Themes
         s.activeTheme = 'DEFAULT';
         s.unlockedThemes = ['DEFAULT'];
 
         // Reset Staff
-        s.staffCorn = { active: false, level: 0, x: 50, y: 50, state: 'IDLE', holding: [], maxHold: 1 };
-        s.staffTomato = { active: false, level: 0, x: 400, y: 50, state: 'IDLE', holding: [], maxHold: 1 };
-        s.staffWheat = { active: false, level: 0, x: 760, y: 50, state: 'IDLE', holding: [], maxHold: 1 };
-        s.staffOrchard = { active: false, level: 0, x: 1120, y: 50, state: 'IDLE', holding: [], maxHold: 1 };
-        s.staffCocoa = { active: false, level: 0, x: 1480, y: 50, state: 'IDLE', holding: [], maxHold: 1 };
+        s.staffCorn = { active: false, level: 0, x: 100, y: 100, targetX: 100, targetY: 100, state: 'IDLE', timer: 0, holding: [], maxHold: 1, stamina: 100, maxStamina: 100 } as StaffState;
+        s.staffTomato = { active: false, level: 0, x: 460, y: 100, targetX: 460, targetY: 100, state: 'IDLE', timer: 0, holding: [], maxHold: 1, stamina: 100, maxStamina: 100 } as StaffState;
+        s.staffWheat = { active: false, level: 0, x: 820, y: 100, targetX: 820, targetY: 100, state: 'IDLE', timer: 0, holding: [], maxHold: 1, stamina: 100, maxStamina: 100 } as StaffState;
+        s.staffOrchard = { active: false, level: 0, x: 1180, y: 100, targetX: 1180, targetY: 100, state: 'IDLE', timer: 0, holding: [], maxHold: 1, stamina: 100, maxStamina: 100 } as StaffState;
+        s.staffCocoa = { active: false, level: 0, x: 1540, y: 100, targetX: 1540, targetY: 100, state: 'IDLE', timer: 0, holding: [], maxHold: 1, stamina: 100, maxStamina: 100 } as StaffState;
         s.salesStaffBread = { active: false, x: 100, y: 460, timer: 0, state: 'IDLE' };
         s.salesStaffKetchup = { active: false, x: 460, y: 460, timer: 0, state: 'IDLE' };
         s.salesStaffCheese = { active: false, x: 820, y: 460, timer: 0, state: 'IDLE' };
@@ -1010,11 +1061,11 @@ const GameSandbox: FC = () => {
         s.salesStaffChocolate = { active: false, x: 1540, y: 460, timer: 0, state: 'IDLE' };
 
         // Reset Machines & Desks
-        s.machineBakery = { x: 250, y: 280, processing: false, timer: 0, queue: 0, output: [] };
-        s.machineSauce = { x: 610, y: 280, processing: false, timer: 0, queue: 0, output: [] };
-        s.machineCheese = { x: 970, y: 280, processing: false, timer: 0, queue: 0, output: [] };
-        s.machineJuice = { x: 1330, y: 280, processing: false, timer: 0, queue: 0, output: [] };
-        s.machineChocolate = { x: 1690, y: 280, processing: false, timer: 0, queue: 0, output: [] };
+        s.machineBakery = { x: 250, y: 280, processing: false, timer: 0, queue: 0, output: [], trash: 0, jammed: false };
+        s.machineSauce = { x: 610, y: 280, processing: false, timer: 0, queue: 0, output: [], trash: 0, jammed: false };
+        s.machineCheese = { x: 970, y: 280, processing: false, timer: 0, queue: 0, output: [], trash: 0, jammed: false };
+        s.machineJuice = { x: 1330, y: 280, processing: false, timer: 0, queue: 0, output: [], trash: 0, jammed: false };
+        s.machineChocolate = { x: 1690, y: 280, processing: false, timer: 0, queue: 0, output: [], trash: 0, jammed: false };
         s.deskBread.stock = 0;
         s.deskKetchup.stock = 0;
         s.deskCheese.stock = 0;
@@ -1022,7 +1073,7 @@ const GameSandbox: FC = () => {
         s.deskChocolate.stock = 0;
 
         // Reset Truck
-        s.truck = { x: -200, y: 530, state: 'IDLE', targetX: 0, orders: { bread: 0, ketchup: 0, cheese: 0, juice: 0, chocolate: 0 }, color: '#fbc02d', phrase: '', waitTimer: 0 };
+        s.truck = { x: -200, y: 530, state: 'IDLE', targetX: 0, orders: { bread: 0, ketchup: 0, cheese: 0, juice: 0, chocolate: 0 }, color: '#fbc02d', phrase: '', waitTimer: 0, isGolden: false };
 
         s.patches = initPatches();
         s.cows = initCows();
@@ -1077,6 +1128,8 @@ const GameSandbox: FC = () => {
             gems: s.gems,
             managers: s.managers,
             activeManagers: s.activeManagers,
+            marketTrend: s.marketTrend,
+            rentTimer: s.rentTimer,
             // Save Themes
             activeTheme: s.activeTheme,
             unlockedThemes: s.unlockedThemes,
@@ -1115,6 +1168,24 @@ const GameSandbox: FC = () => {
         return "Thanks!";
     };
 
+    const cleanMachine = (m: MachineState) => {
+        const s = gs.current;
+        const maxStack = CONFIG.stack[s.lvlStack].val + Math.floor(getManagerBonus('LOGISTICS'));
+
+        if (m.jammed || m.trash > 0) {
+            if (s.inventory.length < maxStack) {
+                s.inventory.push('TRASH_BAG');
+                m.trash = 0;
+                m.jammed = false;
+                if (sfxOn) playSfx('pop');
+                setAlertMsg("Drop the Waste in the Trash Can");
+                spawnConfetti(m.x + 40, m.y + 40);
+            } else {
+                setAlertMsg("Inventory Full!");
+            }
+        }
+    };
+
     const update = useCallback(() => {
         if (gameState !== 'PLAYING') return;
         const s = gs.current;
@@ -1126,6 +1197,16 @@ const GameSandbox: FC = () => {
         }
 
 
+
+        // --- RENT ---
+        s.rentTimer--;
+        if (s.rentTimer <= 0) {
+            const rent = 100 * (1 + (s.unlockedKetchup ? 1 : 0) + (s.unlockedDairy ? 1 : 0) + (s.unlockedOrchard ? 1 : 0) + (s.unlockedChocolate ? 1 : 0));
+            s.money -= rent;
+            s.rentTimer = 36000; // 10 mins
+            setAlertMsg(`Rent Paid: -$${rent}`);
+            if (sfxOn) playSfx('pop');
+        }
 
         // --- MANAGER BONUSES ---
         const prodBonus = getManagerBonus('PRODUCTION'); // Raw value (e.g. 0.15)
@@ -1456,15 +1537,42 @@ const GameSandbox: FC = () => {
                 }
             }
             // Process
-            if (!m.processing && m.queue > 0 && m.output.length < CONFIG.maxMachineOutput) {
+            if (!m.processing && m.queue > 0 && m.output.length < CONFIG.maxMachineOutput && !m.jammed) {
                 m.processing = true; m.queue--; m.timer = speed;
             }
-            if (m.processing) {
+            // Process
+            if (m.processing && !m.jammed) {
                 m.timer--;
                 if (m.timer <= 0) {
                     m.processing = false;
-                    if (m.output.length < CONFIG.maxMachineOutput) m.output.push({ id: Date.now(), x: m.x - 30, y: m.y + 20 });
+                    m.output.push({ id: Date.now() + Math.random(), x: m.x - 30, y: m.y + 20 });
+                    if (sfxOn) playSfx('pop');
+
+                    // Trash Generation (10% chance per product)
+                    if (Math.random() < 0.1) {
+                        m.trash++;
+                        if (m.trash >= 5) {
+                            m.jammed = true;
+                            setAlertMsg("MACHINE JAMMED! Click on the machine to fix it.");
+                            if (sfxOn) playSfx('pop'); // Jam sound
+                        }
+                    }
+
+                    // Start next if queue > 0
+                    if (m.queue > 0 && !m.jammed) {
+                        m.queue--;
+                        m.processing = true;
+                        // Speed Bonus Logic
+                        const bonus = getManagerBonus('PRODUCTION');
+                        // New Speed = Base Speed / (1 + Bonus)
+                        m.timer = Math.floor(speed / (1 + bonus));
+                    }
                 }
+            } else if (m.queue > 0 && !m.processing && !m.jammed) {
+                m.queue--;
+                m.processing = true;
+                const bonus = getManagerBonus('PRODUCTION');
+                m.timer = Math.floor(speed / (1 + bonus));
             }
             // Collect
             if (s.inventory.length < maxStack) {
@@ -1479,6 +1587,8 @@ const GameSandbox: FC = () => {
             }
         };
 
+
+
         handleMachine(s.machineBakery, 'CORN', 'BREAD', breadSpeed, 250, 280);
         if (s.unlockedKetchup) handleMachine(s.machineSauce, 'TOMATO', 'KETCHUP', sauceSpeed, 610, 280);
         if (s.unlockedDairy) handleMachine(s.machineCheese, 'MILK', 'CHEESE', cheeseSpeed, 970, 280);
@@ -1486,8 +1596,34 @@ const GameSandbox: FC = () => {
         if (s.unlockedChocolate) handleMachine(s.machineChocolate, 'COCOA', 'CHOCOLATE', chocolateSpeed, 1690, 280);
 
         // --- STAFF AI ---
-        const updateStaff = (bot: any, targetType: 'CORN' | 'TOMATO' | 'COCOA', machine: MachineState, queueProp: 'queue') => {
+        const updateStaff = (bot: StaffState, targetType: 'CORN' | 'TOMATO' | 'COCOA', machine: MachineState, queueProp: 'queue') => {
             if (!bot.active) return;
+
+            // STAMINA LOGIC
+            if (bot.state === 'SLEEP') {
+                bot.stamina += 0.1;
+                if (bot.stamina >= 100) { bot.stamina = 100; bot.state = 'IDLE'; }
+                return;
+            }
+            if (bot.state === 'TIRED') {
+                const coffeeX = 350; const coffeeY = 200;
+                const dist = Math.hypot(coffeeX - bot.x, coffeeY - bot.y);
+                if (dist < 10) { bot.state = 'DRINKING'; bot.timer = 120; }
+                else { bot.x += ((coffeeX - bot.x) / dist) * 1.5; bot.y += ((coffeeY - bot.y) / dist) * 1.5; }
+                return;
+            }
+            if (bot.state === 'DRINKING') {
+                bot.timer--;
+                const regenRate = CONFIG.coffeeMachine[s.lvlCoffeeMachine]?.val || 0.5;
+                bot.stamina += regenRate;
+                if (bot.stamina >= 100 || bot.timer <= 0) { bot.stamina = 100; bot.state = 'IDLE'; }
+                return;
+            }
+            if (bot.state !== 'IDLE') {
+                bot.stamina -= 0.05;
+                if (bot.stamina <= 0) { bot.stamina = 0; bot.state = 'TIRED'; return; }
+            }
+
             const effectiveMaxHold = bot.maxHold + logBonus;
             const holdingCount = bot.holding.length;
 
@@ -1528,8 +1664,34 @@ const GameSandbox: FC = () => {
         if (s.unlockedChocolate) updateStaff(s.staffCocoa, 'COCOA', s.machineChocolate, 'queue');
 
         // Staff Wheat Logic (Complex)
-        const updateStaffWheat = (bot: any) => {
+        const updateStaffWheat = (bot: StaffState) => {
             if (!bot.active) return;
+
+            // STAMINA LOGIC
+            if (bot.state === 'SLEEP') {
+                bot.stamina += 0.1;
+                if (bot.stamina >= 100) { bot.stamina = 100; bot.state = 'IDLE'; }
+                return;
+            }
+            if (bot.state === 'TIRED') {
+                const coffeeX = 350; const coffeeY = 200;
+                const dist = Math.hypot(coffeeX - bot.x, coffeeY - bot.y);
+                if (dist < 10) { bot.state = 'DRINKING'; bot.timer = 120; }
+                else { bot.x += ((coffeeX - bot.x) / dist) * 1.5; bot.y += ((coffeeY - bot.y) / dist) * 1.5; }
+                return;
+            }
+            if (bot.state === 'DRINKING') {
+                bot.timer--;
+                const regenRate = CONFIG.coffeeMachine[s.lvlCoffeeMachine]?.val || 0.5;
+                bot.stamina += regenRate;
+                if (bot.stamina >= 100 || bot.timer <= 0) { bot.stamina = 100; bot.state = 'IDLE'; }
+                return;
+            }
+            if (bot.state !== 'IDLE') {
+                bot.stamina -= 0.05;
+                if (bot.stamina <= 0) { bot.stamina = 0; bot.state = 'TIRED'; return; }
+            }
+
             const effectiveMaxHold = bot.maxHold + logBonus;
             const holdingMilk = bot.holding.filter((i: string) => i === 'MILK').length;
             const holdingWheat = bot.holding.filter((i: string) => i === 'WHEAT').length;
@@ -1623,8 +1785,33 @@ const GameSandbox: FC = () => {
         if (s.unlockedDairy) updateStaffWheat(s.staffWheat);
 
         // Staff Orchard Logic (Shake & Collect)
-        const updateStaffOrchard = (bot: any) => {
+        const updateStaffOrchard = (bot: StaffState) => {
             if (!bot.active) return;
+
+            // STAMINA LOGIC
+            if (bot.state === 'SLEEP') {
+                bot.stamina += 0.1;
+                if (bot.stamina >= 100) { bot.stamina = 100; bot.state = 'IDLE'; }
+                return;
+            }
+            if (bot.state === 'TIRED') {
+                const coffeeX = 350; const coffeeY = 200;
+                const dist = Math.hypot(coffeeX - bot.x, coffeeY - bot.y);
+                if (dist < 10) { bot.state = 'DRINKING'; bot.timer = 120; }
+                else { bot.x += ((coffeeX - bot.x) / dist) * 1.5; bot.y += ((coffeeY - bot.y) / dist) * 1.5; }
+                return;
+            }
+            if (bot.state === 'DRINKING') {
+                bot.timer--;
+                const regenRate = CONFIG.coffeeMachine[s.lvlCoffeeMachine]?.val || 0.5;
+                bot.stamina += regenRate;
+                if (bot.stamina >= 100 || bot.timer <= 0) { bot.stamina = 100; bot.state = 'IDLE'; }
+                return;
+            }
+            if (bot.state !== 'IDLE') {
+                bot.stamina -= 0.05;
+                if (bot.stamina <= 0) { bot.stamina = 0; bot.state = 'TIRED'; return; }
+            }
             const effectiveMaxHold = bot.maxHold + logBonus;
             const holdingOrange = bot.holding.filter((i: string) => i === 'ORANGE').length;
             const space = effectiveMaxHold - bot.holding.length;
@@ -1752,7 +1939,20 @@ const GameSandbox: FC = () => {
                 else if (s.truck.orders.chocolate > 0) s.truck.targetX = CHOCOLATE_STOP_X;
                 else s.truck.targetX = EXIT_X;
 
-                s.truck.color = ['#d32f2f', '#388e3c', '#1976d2', '#f57c00', '#795548'][Math.floor(Math.random() * 5)];
+                // Truck Color & Golden Logic
+                const colors = ['#d32f2f', '#388e3c', '#1976d2', '#f57c00', '#795548'];
+                let newColor = colors[Math.floor(Math.random() * colors.length)];
+                while (newColor === s.truck.color) {
+                    newColor = colors[Math.floor(Math.random() * colors.length)];
+                }
+                s.truck.color = newColor;
+
+                // Golden Truck Chance
+                s.truck.isGolden = false;
+                if (s.achievements.includes('golden_truck') && Math.random() < 0.1) {
+                    s.truck.isGolden = true;
+                }
+
                 s.truck.phrase = getTruckPhrase(s.truck.orders.bread, s.truck.orders.ketchup, s.truck.orders.cheese, s.truck.orders.juice, s.truck.orders.chocolate);
             }
         }
@@ -1800,7 +2000,7 @@ const GameSandbox: FC = () => {
                         // Instant Sell for Player
                         desk.stock -= requiredAmount;
                         s.truck.orders[type] = 0;
-                        const totalGain = requiredAmount * price;
+                        const totalGain = requiredAmount * price * (s.truck.isGolden ? 2 : 1);
                         s.money += totalGain;
                         s.lifetime.totalMoney += totalGain;
                         if (type === 'bread') s.lifetime.totalBread += requiredAmount;
@@ -1830,7 +2030,7 @@ const GameSandbox: FC = () => {
                                 // Sell Execution
                                 desk.stock -= requiredAmount;
                                 s.truck.orders[type] = 0;
-                                const totalGain = requiredAmount * price;
+                                const totalGain = requiredAmount * price * (s.truck.isGolden ? 2 : 1);
                                 s.money += totalGain;
                                 s.lifetime.totalMoney += totalGain;
                                 if (type === 'bread') s.lifetime.totalBread += requiredAmount;
@@ -1853,11 +2053,11 @@ const GameSandbox: FC = () => {
                 return false;
             };
 
-            if (atBread) sold = checkSale(s.deskBread, 'bread', CONFIG.prices.bread, s.salesStaffBread);
-            if (atKetchup) sold = checkSale(s.deskKetchup, 'ketchup', CONFIG.prices.ketchup, s.salesStaffKetchup);
-            if (atCheese) sold = checkSale(s.deskCheese, 'cheese', CONFIG.prices.cheese, s.salesStaffCheese);
-            if (atJuice) sold = checkSale(s.deskJuice, 'juice', CONFIG.prices.juice, s.salesStaffJuice);
-            if (atChocolate) sold = checkSale(s.deskChocolate, 'chocolate', CONFIG.prices.chocolate, s.salesStaffChocolate);
+            if (atBread) sold = checkSale(s.deskBread, 'bread', getPrice(CONFIG.prices.bread, 'BREAD'), s.salesStaffBread);
+            if (atKetchup) sold = checkSale(s.deskKetchup, 'ketchup', getPrice(CONFIG.prices.ketchup, 'KETCHUP'), s.salesStaffKetchup);
+            if (atCheese) sold = checkSale(s.deskCheese, 'cheese', getPrice(CONFIG.prices.cheese, 'CHEESE'), s.salesStaffCheese);
+            if (atJuice) sold = checkSale(s.deskJuice, 'juice', getPrice(CONFIG.prices.juice, 'JUICE'), s.salesStaffJuice);
+            if (atChocolate) sold = checkSale(s.deskChocolate, 'chocolate', getPrice(CONFIG.prices.chocolate, 'CHOCOLATE'), s.salesStaffChocolate);
 
             // Check if done with current station or all orders
             if (s.truck.orders.bread === 0 && s.truck.orders.ketchup === 0 && s.truck.orders.cheese === 0 && s.truck.orders.juice === 0 && s.truck.orders.chocolate === 0) {
@@ -1924,6 +2124,9 @@ const GameSandbox: FC = () => {
             }
         });
 
+        // MARKET UPDATE
+        updateMarket();
+
         setUiTick(t => t + 1);
         animRef.current = requestAnimationFrame(update);
     }, [gameState, showUpgradeMenu, showSettings, alertMsg, showTrashConfirm]);
@@ -1975,6 +2178,57 @@ const GameSandbox: FC = () => {
         }
     };
 
+    // --- MARKET LOGIC ---
+    const updateMarket = () => {
+        const s = gs.current;
+        if (s.marketTrend.timer > 0) {
+            s.marketTrend.timer--;
+            if (s.marketTrend.timer <= 0) {
+                s.marketTrend = { type: 'NORMAL', resource: null, multiplier: 1, timer: 0, news: null };
+            }
+        } else {
+            // Random Event Chance (approx every minute: 1/3600 per tick? No, update is 60fps. 1 min = 3600 frames)
+            // Let's make it more frequent for testing: 1/1200 (20 secs)
+            if (Math.random() < 0.0005) {
+                const resources: ItemType[] = ['BREAD', 'KETCHUP', 'CHEESE', 'JUICE', 'CHOCOLATE'];
+                // Filter unlocked resources
+                const available = resources.filter(r => {
+                    if (r === 'BREAD') return true;
+                    if (r === 'KETCHUP') return s.unlockedKetchup;
+                    if (r === 'CHEESE') return s.unlockedDairy;
+                    if (r === 'JUICE') return s.unlockedOrchard;
+                    if (r === 'CHOCOLATE') return s.unlockedChocolate;
+                    return false;
+                });
+
+                if (available.length > 0) {
+                    const res = available[Math.floor(Math.random() * available.length)];
+                    const isSurge = Math.random() > 0.5;
+                    const type = isSurge ? 'SURGE' : 'CRASH';
+                    const multiplier = isSurge ? 2.0 : 0.5;
+                    const duration = 1800; // 30 seconds
+
+                    s.marketTrend = {
+                        type,
+                        resource: res,
+                        multiplier,
+                        timer: duration,
+                        news: isSurge ? `MARKET SURGE! ${res} prices DOUBLED!` : `MARKET CRASH! ${res} prices HALVED!`
+                    };
+                    if (sfxOn) playSfx(isSurge ? 'upgrade' : 'pop'); // Use existing sfx for now
+                }
+            }
+        }
+    };
+
+    const getPrice = (basePrice: number, item: ItemType) => {
+        const s = gs.current;
+        if (s.marketTrend.resource === item) {
+            return Math.floor(basePrice * s.marketTrend.multiplier);
+        }
+        return basePrice;
+    };
+
     const equipManager = (id: string, type: ManagerType) => {
         const s = gs.current;
         const slot = type.toLowerCase() as 'production' | 'logistics' | 'sales';
@@ -1984,7 +2238,7 @@ const GameSandbox: FC = () => {
         if (sfxOn) playSfx('pop');
     };  // Force update to reflect changes immediately in UI if needed, though loop handles it
 
-    const buyUpgrade = (type: 'stack' | 'speed' | 'machineBread' | 'machineSauce' | 'machineCheese' | 'machineJuice' | 'machineChocolate' | 'machineQueue') => {
+    const buyUpgrade = (type: 'stack' | 'speed' | 'machineBread' | 'machineSauce' | 'machineCheese' | 'machineJuice' | 'machineChocolate' | 'machineQueue' | 'coffeeMachine') => {
         const s = gs.current;
         let cost = 0; let success = false;
         if (type === 'stack' && s.lvlStack < 4) { cost = CONFIG.stack[s.lvlStack + 1].cost; if (s.money >= cost) { s.money -= cost; s.lvlStack++; success = true; } }
@@ -1995,6 +2249,7 @@ const GameSandbox: FC = () => {
         else if (type === 'machineJuice' && s.lvlMachineJuice < 2) { cost = CONFIG.machineJuice[s.lvlMachineJuice + 1].cost; if (s.money >= cost) { s.money -= cost; s.lvlMachineJuice++; success = true; } }
         else if (type === 'machineChocolate' && s.lvlMachineChocolate < 2) { cost = CONFIG.machineChocolate[s.lvlMachineChocolate + 1].cost; if (s.money >= cost) { s.money -= cost; s.lvlMachineChocolate++; success = true; } }
         else if (type === 'machineQueue' && s.lvlMachineQueue < 6) { cost = CONFIG.machineQueue[s.lvlMachineQueue + 1].cost; if (s.money >= cost) { s.money -= cost; s.lvlMachineQueue++; success = true; } }
+        else if (type === 'coffeeMachine' && s.lvlCoffeeMachine < 2) { cost = CONFIG.coffeeMachine[s.lvlCoffeeMachine + 1].cost; if (s.money >= cost) { s.money -= cost; s.lvlCoffeeMachine++; success = true; } }
 
         if (success) { spawnConfetti(180, 320); setAlertMsg("Upgrade Successful!"); s.purchaseCooldown = 60; }
     };
@@ -2034,13 +2289,17 @@ const GameSandbox: FC = () => {
     );
 
     if (gameState === 'START') {
+        const s = gs.current;
 
 
         return (
             <div className="w-full h-screen bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-yellow-700 via-purple-900 to-black flex flex-col items-center justify-center text-white gap-6 relative overflow-hidden">
                 <MenuBackground />
                 <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-                <button onClick={() => setShowSettings(true)} className="absolute top-6 right-6 w-10 h-10 bg-slate-700/50 rounded-full border border-slate-400 flex items-center justify-center hover:bg-slate-600 transition-colors z-50">⚙️</button>
+                <div className="absolute top-6 right-6 flex gap-2 z-50">
+                    <button onClick={() => { setShowSettings(true); setSettingsTab('ABOUT'); }} className="w-10 h-10 bg-slate-700/50 rounded-full border border-slate-400 flex items-center justify-center hover:bg-slate-600 transition-colors font-bold text-xl">?</button>
+                    <button onClick={() => { setShowSettings(true); setSettingsTab('OPTIONS'); }} className="w-10 h-10 bg-slate-700/50 rounded-full border border-slate-400 flex items-center justify-center hover:bg-slate-600 transition-colors text-xl">⚙️</button>
+                </div>
 
                 {/* PULSING GLOW TITLE */}
                 <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 drop-shadow-lg tracking-widest text-center z-10 animate-[pulse-glow_2s_infinite]">TOWNSHIP<br />TYCOON</h1>
@@ -2060,12 +2319,79 @@ const GameSandbox: FC = () => {
                     </div>
                 </div>
 
+
+
                 {showSettings && (
                     <div className="absolute inset-0 bg-black/90 z-[3000] flex flex-col items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
-                        <div className="bg-white w-full max-w-xs rounded-2xl p-4 shadow-2xl border-4 border-slate-300 text-center">
-                            <h2 className="font-black text-2xl text-slate-800 mb-4">SETTINGS</h2>
-                            <button onClick={toggleSfx} className={`w-full py-3 mb-4 rounded-xl font-bold border-2 ${sfxOn ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}`}>SFX: {sfxOn ? "ON 🔊" : "OFF 🔇"}</button>
-                            <button onClick={() => setShowSettings(false)} className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold">CLOSE</button>
+                        <div className="bg-white w-full max-w-xs rounded-2xl p-4 shadow-2xl border-4 border-slate-300 text-center flex flex-col max-h-[80vh]">
+                            {settingsTab === 'ABOUT' ? (
+                                <div className="flex flex-col h-full">
+                                    <h2 className="font-black text-2xl text-slate-800 mb-4">ABOUT</h2>
+                                    {!aboutSubTab ? (
+                                        <div className="flex flex-col gap-2">
+                                            <button onClick={() => setAboutSubTab('BASICS')} className="w-full py-3 bg-blue-100 text-blue-800 rounded-xl font-bold border-2 border-blue-200 hover:bg-blue-200">BASICS 🎮</button>
+                                            <button onClick={() => setAboutSubTab('STAFF')} className="w-full py-3 bg-green-100 text-green-800 rounded-xl font-bold border-2 border-green-200 hover:bg-green-200">STAFF 👷</button>
+                                            <button onClick={() => setAboutSubTab('MACHINES')} className="w-full py-3 bg-orange-100 text-orange-800 rounded-xl font-bold border-2 border-orange-200 hover:bg-orange-200">MACHINES ⚙️</button>
+                                            <button onClick={() => setAboutSubTab('UPGRADES')} className="w-full py-3 bg-purple-100 text-purple-800 rounded-xl font-bold border-2 border-purple-200 hover:bg-purple-200">UPGRADES 🚀</button>
+                                            <button onClick={() => setAboutSubTab('CREDITS')} className="w-full py-3 bg-slate-100 text-slate-800 rounded-xl font-bold border-2 border-slate-200 hover:bg-slate-200">CREDITS ❤️</button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col h-full min-h-0">
+                                            <button onClick={() => setAboutSubTab(null)} className="mb-2 text-left font-bold text-slate-500 hover:text-slate-800">⬅ BACK</button>
+                                            <div className="flex-1 overflow-y-auto text-left text-sm text-slate-600 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                                                {aboutSubTab === 'BASICS' && (
+                                                    <>
+                                                        <h3 className="font-black text-slate-800 mb-2">HOW TO PLAY</h3>
+                                                        <p className="mb-2"><strong>Move:</strong> Use Joystick or Arrow Keys.</p>
+                                                        <p className="mb-2"><strong>Harvest:</strong> Walk near ripe crops to collect them.</p>
+                                                        <p className="mb-2"><strong>Sell:</strong> Walk to the Truck to sell products.</p>
+                                                        <p><strong>Goal:</strong> Earn money, unlock zones, and build a tycoon empire!</p>
+                                                    </>
+                                                )}
+                                                {aboutSubTab === 'STAFF' && (
+                                                    <>
+                                                        <h3 className="font-black text-slate-800 mb-2">STAFF MANAGEMENT</h3>
+                                                        <p className="mb-2"><strong>Hiring:</strong> Hire staff to automate harvesting and selling.</p>
+                                                        <p className="mb-2"><strong>Stamina:</strong> Staff get tired! If they sleep (Zzz), click them to wake up.</p>
+                                                        <p><strong>Managers:</strong> Equip managers for global bonuses like speed and capacity.</p>
+                                                    </>
+                                                )}
+                                                {aboutSubTab === 'MACHINES' && (
+                                                    <>
+                                                        <h3 className="font-black text-slate-800 mb-2">MACHINES</h3>
+                                                        <p className="mb-2"><strong>Processing:</strong> Machines turn raw crops into valuable products.</p>
+                                                        <p className="mb-2"><strong>Queues:</strong> Upgrade machine queues to stack more items.</p>
+                                                        <p><strong>Automation:</strong> Staff will automatically feed machines and collect products.</p>
+                                                    </>
+                                                )}
+                                                {aboutSubTab === 'UPGRADES' && (
+                                                    <>
+                                                        <h3 className="font-black text-slate-800 mb-2">UPGRADES</h3>
+                                                        <p className="mb-2"><strong>Stack:</strong> Carry more items at once.</p>
+                                                        <p className="mb-2"><strong>Speed:</strong> Move faster.</p>
+                                                        <p><strong>Coffee Machine:</strong> Helps staff recover stamina faster.</p>
+                                                    </>
+                                                )}
+                                                {aboutSubTab === 'CREDITS' && (
+                                                    <>
+                                                        <h3 className="font-black text-slate-800 mb-2">CREDITS</h3>
+                                                        <p className="mb-2"><strong>Created by:</strong> DavogStudios</p>
+                                                        <p className="mb-2"><strong>Engine:</strong> React + Tailwind</p>
+                                                        <p>Thanks for playing!</p>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <button onClick={() => setShowSettings(false)} className="w-full py-3 mt-4 bg-slate-800 text-white rounded-xl font-bold border-b-4 border-slate-950 active:scale-95 shrink-0">CLOSE</button>
+                                </div>
+                            ) : (
+                                <>
+                                    <h2 className="font-black text-2xl text-slate-800 mb-4">SETTINGS</h2>
+                                    <button onClick={toggleSfx} className={`w-full py-3 mb-4 rounded-xl font-bold border-2 ${sfxOn ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}`}>SFX: {sfxOn ? "ON 🔊" : "OFF 🔇"}</button>
+                                    <button onClick={() => setShowSettings(false)} className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold">CLOSE</button>
+                                </>
+                            )}
                         </div>
                     </div>
                 )}
@@ -2188,14 +2514,14 @@ const GameSandbox: FC = () => {
 
                     {/* TRUCK (Sorted by Y) */}
                     <div className="absolute w-[160px] h-[70px] transition-transform duration-300" style={{ left: s.truck.x, top: s.truck.y, zIndex: Math.floor(s.truck.y), transform: s.truck.state === 'DRIVING' && s.truck.targetX < s.truck.x ? 'scaleX(-1)' : 'scaleX(1)' }}>
-                        <SvgTruck color={s.truck.color} />
+                        <SvgTruck color={s.truck.color} isGolden={s.truck.isGolden} />
                         {s.truck.state !== 'IDLE' && <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-white px-3 py-2 rounded-xl border-2 border-slate-300 shadow-xl z-50 animate-bounce" style={{ transform: s.truck.state === 'DRIVING' && s.truck.targetX < s.truck.x ? 'scaleX(-1)' : 'scaleX(1)' }}><p className="font-bold text-sm whitespace-nowrap text-slate-800">{s.truck.phrase}</p><div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-b-2 border-r-2 border-slate-300 transform rotate-45"></div></div>}
                         {s.truck.state === 'WAITING' && <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-black/50 text-white text-[10px] px-2 rounded-full">{Math.ceil(s.truck.waitTimer / 60)}s</div>}
                     </div>
 
                     {/* BAKERY (Sorted by Y) */}
-                    <div className="absolute w-[100px] h-[80px]" style={{ left: s.machineBakery.x, top: s.machineBakery.y, zIndex: Math.floor(s.machineBakery.y) }}>
-                        <SvgMachine type="BAKERY" working={s.machineBakery.processing} />
+                    <div className="absolute w-[100px] h-[80px] cursor-pointer active:scale-95" style={{ left: s.machineBakery.x, top: s.machineBakery.y, zIndex: Math.floor(s.machineBakery.y) }} onClick={() => cleanMachine(s.machineBakery)}>
+                        <SvgMachine type="BAKERY" working={s.machineBakery.processing} jammed={s.machineBakery.jammed} />
                         <div className={`absolute -top-4 right-0 text-white text-[10px] px-1 rounded ${s.machineBakery.queue >= CONFIG.machineQueue[s.lvlMachineQueue].val ? 'bg-red-600 animate-pulse' : 'bg-blue-500'}`}>Q: {s.machineBakery.queue}/{CONFIG.machineQueue[s.lvlMachineQueue].val}</div>
                     </div>
                     {s.machineBakery.output.map(o => <div key={o.id} className="absolute" style={{ left: o.x, top: o.y, zIndex: Math.floor(o.y) }}><div className="w-8 h-6 animate-bounce relative"><SvgItem type="BREAD" /></div></div>)}
@@ -2203,8 +2529,8 @@ const GameSandbox: FC = () => {
                     {/* SAUCE MACHINE (Sorted by Y) */}
                     {s.unlockedKetchup && (
                         <>
-                            <div className="absolute w-[100px] h-[80px]" style={{ left: s.machineSauce.x, top: s.machineSauce.y, zIndex: Math.floor(s.machineSauce.y) }}>
-                                <SvgMachine type="SAUCE" working={s.machineSauce.processing} />
+                            <div className="absolute w-[100px] h-[80px] cursor-pointer active:scale-95" style={{ left: s.machineSauce.x, top: s.machineSauce.y, zIndex: Math.floor(s.machineSauce.y) }} onClick={() => cleanMachine(s.machineSauce)}>
+                                <SvgMachine type="SAUCE" working={s.machineSauce.processing} jammed={s.machineSauce.jammed} />
                                 <div className={`absolute -top-4 right-0 text-white text-[10px] px-1 rounded ${s.machineSauce.queue >= CONFIG.machineQueue[s.lvlMachineQueue].val ? 'bg-red-600 animate-pulse' : 'bg-red-500'}`}>Q: {s.machineSauce.queue}/{CONFIG.machineQueue[s.lvlMachineQueue].val}</div>
                             </div>
                             {s.machineSauce.output.map(o => <div key={o.id} className="absolute" style={{ left: o.x, top: o.y, zIndex: Math.floor(o.y) }}><div className="w-4 h-8 animate-bounce relative"><SvgItem type="KETCHUP" /></div></div>)}
@@ -2214,8 +2540,8 @@ const GameSandbox: FC = () => {
                     {/* CHEESE MACHINE (Sorted by Y) */}
                     {s.unlockedDairy && (
                         <>
-                            <div className="absolute w-[100px] h-[80px]" style={{ left: s.machineCheese.x, top: s.machineCheese.y, zIndex: Math.floor(s.machineCheese.y) }}>
-                                <SvgMachine type="CHEESE" working={s.machineCheese.processing} />
+                            <div className="absolute w-[100px] h-[80px] cursor-pointer active:scale-95" style={{ left: s.machineCheese.x, top: s.machineCheese.y, zIndex: Math.floor(s.machineCheese.y) }} onClick={() => cleanMachine(s.machineCheese)}>
+                                <SvgMachine type="CHEESE" working={s.machineCheese.processing} jammed={s.machineCheese.jammed} />
                                 <div className={`absolute -top-4 right-0 text-white text-[10px] px-1 rounded ${s.machineCheese.queue >= CONFIG.machineQueue[s.lvlMachineQueue].val ? 'bg-red-600 animate-pulse' : 'bg-yellow-500'}`}>Q: {s.machineCheese.queue}/{CONFIG.machineQueue[s.lvlMachineQueue].val}</div>
                             </div>
                             {s.machineCheese.output.map(o => <div key={o.id} className="absolute" style={{ left: o.x, top: o.y, zIndex: Math.floor(o.y) }}><div className="w-8 h-6 animate-bounce relative"><SvgItem type="CHEESE" /></div></div>)}
@@ -2225,8 +2551,8 @@ const GameSandbox: FC = () => {
                     {/* JUICE MACHINE (Sorted by Y) */}
                     {s.unlockedOrchard && (
                         <>
-                            <div className="absolute w-[100px] h-[80px]" style={{ left: s.machineJuice.x, top: s.machineJuice.y, zIndex: Math.floor(s.machineJuice.y) }}>
-                                <SvgMachine type="JUICE" working={s.machineJuice.processing} />
+                            <div className="absolute w-[100px] h-[80px] cursor-pointer active:scale-95" style={{ left: s.machineJuice.x, top: s.machineJuice.y, zIndex: Math.floor(s.machineJuice.y) }} onClick={() => cleanMachine(s.machineJuice)}>
+                                <SvgMachine type="JUICE" working={s.machineJuice.processing} jammed={s.machineJuice.jammed} />
                                 <div className={`absolute -top-4 right-0 text-white text-[10px] px-1 rounded ${s.machineJuice.queue >= CONFIG.machineQueue[s.lvlMachineQueue].val ? 'bg-red-600 animate-pulse' : 'bg-orange-500'}`}>Q: {s.machineJuice.queue}/{CONFIG.machineQueue[s.lvlMachineQueue].val}</div>
                             </div>
                             {s.machineJuice.output.map(o => <div key={o.id} className="absolute" style={{ left: o.x, top: o.y, zIndex: Math.floor(o.y) }}><div className="w-6 h-8 animate-bounce relative"><SvgItem type="JUICE" /></div></div>)}
@@ -2236,8 +2562,8 @@ const GameSandbox: FC = () => {
                     {/* CHOCOLATE MACHINE (Sorted by Y) */}
                     {s.unlockedChocolate && (
                         <>
-                            <div className="absolute w-[100px] h-[80px]" style={{ left: s.machineChocolate.x, top: s.machineChocolate.y, zIndex: Math.floor(s.machineChocolate.y) }}>
-                                <SvgMachine type="CHOCOLATE" working={s.machineChocolate.processing} />
+                            <div className="absolute w-[100px] h-[80px] cursor-pointer active:scale-95" style={{ left: s.machineChocolate.x, top: s.machineChocolate.y, zIndex: Math.floor(s.machineChocolate.y) }} onClick={() => cleanMachine(s.machineChocolate)}>
+                                <SvgMachine type="CHOCOLATE" working={s.machineChocolate.processing} jammed={s.machineChocolate.jammed} />
                                 <div className={`absolute -top-4 right-0 text-white text-[10px] px-1 rounded ${s.machineChocolate.queue >= CONFIG.machineQueue[s.lvlMachineQueue].val ? 'bg-red-600 animate-pulse' : 'bg-amber-800'}`}>Q: {s.machineChocolate.queue}/{CONFIG.machineQueue[s.lvlMachineQueue].val}</div>
                             </div>
                             {s.machineChocolate.output.map(o => <div key={o.id} className="absolute" style={{ left: o.x, top: o.y, zIndex: Math.floor(o.y) }}><div className="w-8 h-6 animate-bounce relative"><SvgItem type="CHOCOLATE" /></div></div>)}
@@ -2245,8 +2571,26 @@ const GameSandbox: FC = () => {
                     )}
 
                     {/* TRASH CAN */}
-                    <div className="absolute w-[40px] h-[40px] bg-slate-700 border-2 border-slate-500 rounded-lg flex items-center justify-center" style={{ left: s.trashZone.x - 20, top: s.trashZone.y - 20, zIndex: 5 }}>
+                    <div className="absolute w-[40px] h-[40px] bg-slate-700 border-2 border-slate-500 rounded-lg flex items-center justify-center cursor-pointer active:scale-95" style={{ left: s.trashZone.x - 20, top: s.trashZone.y - 20, zIndex: 5 }}
+                        onClick={() => {
+                            const trashIdx = s.inventory.indexOf('TRASH_BAG');
+                            if (trashIdx > -1) {
+                                s.inventory.splice(trashIdx, 1);
+                                if (sfxOn) playSfx('pop');
+                                spawnConfetti(s.trashZone.x, s.trashZone.y);
+                                setAlertMsg("Trash Disposed!");
+                            } else if (s.inventory.length > 0) {
+                                setShowTrashConfirm(true);
+                            }
+                        }}
+                    >
                         <span className="text-xl">🗑️</span>
+                    </div>
+
+                    {/* COFFEE MACHINE */}
+                    <div className="absolute w-[40px] h-[40px] bg-amber-900 border-2 border-amber-700 rounded-lg flex items-center justify-center" style={{ left: 350, top: 200, zIndex: 5 }}>
+                        <span className="text-xl">☕</span>
+                        <div className="absolute -bottom-4 w-full text-center text-[8px] font-bold text-black bg-white/70 rounded">LVL {s.lvlCoffeeMachine + 1}</div>
                     </div>
 
                     {/* BREAD DESK (Sorted by Y) */}
@@ -2352,13 +2696,13 @@ const GameSandbox: FC = () => {
 
 
                     {/* CHARACTERS (Sorted by Y) */}
-                    {s.staffCorn.active && <div className="absolute w-[60px] h-[60px] transition-transform duration-75" style={{ left: s.staffCorn.x - 10, top: s.staffCorn.y, zIndex: Math.floor(s.staffCorn.y) }}><SvgCharacter type="STAFF" capColor={getStaffCapColor(s.staffCorn.level)} /><div className="absolute bottom-[45px] left-1/2 -translate-x-1/2 w-6 flex flex-col-reverse items-center gap-[-10px]">{s.staffCorn.holding.map((t, i) => <div key={i} className="w-6 h-6 -mb-4 drop-shadow-md"><SvgItem type={t} /></div>)}</div></div>}
+                    {s.staffCorn.active && <div className="absolute w-[60px] h-[60px] transition-transform duration-75 cursor-pointer" style={{ left: s.staffCorn.x - 10, top: s.staffCorn.y, zIndex: Math.floor(s.staffCorn.y) }} onClick={(e) => { e.stopPropagation(); if (s.staffCorn.state === 'SLEEP') { s.staffCorn.stamina = 100; s.staffCorn.state = 'IDLE'; if (sfxOn) playSfx('pop'); spawnText(s.staffCorn.x, s.staffCorn.y - 40, "WAKE UP!"); } }}><SvgCharacter type="STAFF" capColor={getStaffCapColor(s.staffCorn.level)} />{s.staffCorn.state === 'SLEEP' && <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-2xl animate-pulse">💤</div>}<div className="absolute bottom-[45px] left-1/2 -translate-x-1/2 w-6 flex flex-col-reverse items-center gap-[-10px]">{s.staffCorn.holding.map((t, i) => <div key={i} className="w-6 h-6 -mb-4 drop-shadow-md"><SvgItem type={t} /></div>)}</div></div>}
 
-                    {s.staffTomato.active && s.unlockedKetchup && <div className="absolute w-[60px] h-[60px] transition-transform duration-75" style={{ left: s.staffTomato.x - 10, top: s.staffTomato.y, zIndex: Math.floor(s.staffTomato.y) }}><SvgCharacter type="STAFF" capColor={getStaffCapColor(s.staffTomato.level)} /><div className="absolute bottom-[45px] left-1/2 -translate-x-1/2 w-6 flex flex-col-reverse items-center gap-[-10px]">{s.staffTomato.holding.map((t, i) => <div key={i} className="w-6 h-6 -mb-4 drop-shadow-md"><SvgItem type={t} /></div>)}</div></div>}
+                    {s.staffTomato.active && s.unlockedKetchup && <div className="absolute w-[60px] h-[60px] transition-transform duration-75 cursor-pointer" style={{ left: s.staffTomato.x - 10, top: s.staffTomato.y, zIndex: Math.floor(s.staffTomato.y) }} onClick={(e) => { e.stopPropagation(); if (s.staffTomato.state === 'SLEEP') { s.staffTomato.stamina = 100; s.staffTomato.state = 'IDLE'; if (sfxOn) playSfx('pop'); spawnText(s.staffTomato.x, s.staffTomato.y - 40, "WAKE UP!"); } }}><SvgCharacter type="STAFF" capColor={getStaffCapColor(s.staffTomato.level)} />{s.staffTomato.state === 'SLEEP' && <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-2xl animate-pulse">💤</div>}<div className="absolute bottom-[45px] left-1/2 -translate-x-1/2 w-6 flex flex-col-reverse items-center gap-[-10px]">{s.staffTomato.holding.map((t, i) => <div key={i} className="w-6 h-6 -mb-4 drop-shadow-md"><SvgItem type={t} /></div>)}</div></div>}
 
-                    {s.staffWheat.active && s.unlockedDairy && <div className="absolute w-[60px] h-[60px] transition-transform duration-75" style={{ left: s.staffWheat.x - 10, top: s.staffWheat.y, zIndex: Math.floor(s.staffWheat.y) }}><SvgCharacter type="STAFF" capColor={getStaffCapColor(s.staffWheat.level)} /><div className="absolute bottom-[45px] left-1/2 -translate-x-1/2 w-6 flex flex-col-reverse items-center gap-[-10px]">{s.staffWheat.holding.map((t, i) => <div key={i} className="w-6 h-6 -mb-4 drop-shadow-md"><SvgItem type={t} /></div>)}</div></div>}
-                    {s.staffOrchard.active && s.unlockedOrchard && <div className="absolute w-[60px] h-[60px] transition-transform duration-75" style={{ left: s.staffOrchard.x - 10, top: s.staffOrchard.y, zIndex: Math.floor(s.staffOrchard.y) }}><SvgCharacter type="STAFF" capColor={getStaffCapColor(s.staffOrchard.level)} /><div className="absolute bottom-[45px] left-1/2 -translate-x-1/2 w-6 flex flex-col-reverse items-center gap-[-10px]">{s.staffOrchard.holding.map((t, i) => <div key={i} className="w-6 h-6 -mb-4 drop-shadow-md"><SvgItem type={t} /></div>)}</div></div>}
-                    {s.staffCocoa.active && s.unlockedChocolate && <div className="absolute w-[60px] h-[60px] transition-transform duration-75" style={{ left: s.staffCocoa.x - 10, top: s.staffCocoa.y, zIndex: Math.floor(s.staffCocoa.y) }}><SvgCharacter type="STAFF" capColor={getStaffCapColor(s.staffCocoa.level)} /><div className="absolute bottom-[45px] left-1/2 -translate-x-1/2 w-6 flex flex-col-reverse items-center gap-[-10px]">{s.staffCocoa.holding.map((t, i) => <div key={i} className="w-6 h-6 -mb-4 drop-shadow-md"><SvgItem type={t} /></div>)}</div></div>}
+                    {s.staffWheat.active && s.unlockedDairy && <div className="absolute w-[60px] h-[60px] transition-transform duration-75 cursor-pointer" style={{ left: s.staffWheat.x - 10, top: s.staffWheat.y, zIndex: Math.floor(s.staffWheat.y) }} onClick={(e) => { e.stopPropagation(); if (s.staffWheat.state === 'SLEEP') { s.staffWheat.stamina = 100; s.staffWheat.state = 'IDLE'; if (sfxOn) playSfx('pop'); spawnText(s.staffWheat.x, s.staffWheat.y - 40, "WAKE UP!"); } }}><SvgCharacter type="STAFF" capColor={getStaffCapColor(s.staffWheat.level)} />{s.staffWheat.state === 'SLEEP' && <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-2xl animate-pulse">💤</div>}<div className="absolute bottom-[45px] left-1/2 -translate-x-1/2 w-6 flex flex-col-reverse items-center gap-[-10px]">{s.staffWheat.holding.map((t, i) => <div key={i} className="w-6 h-6 -mb-4 drop-shadow-md"><SvgItem type={t} /></div>)}</div></div>}
+                    {s.staffOrchard.active && s.unlockedOrchard && <div className="absolute w-[60px] h-[60px] transition-transform duration-75 cursor-pointer" style={{ left: s.staffOrchard.x - 10, top: s.staffOrchard.y, zIndex: Math.floor(s.staffOrchard.y) }} onClick={(e) => { e.stopPropagation(); if (s.staffOrchard.state === 'SLEEP') { s.staffOrchard.stamina = 100; s.staffOrchard.state = 'IDLE'; if (sfxOn) playSfx('pop'); spawnText(s.staffOrchard.x, s.staffOrchard.y - 40, "WAKE UP!"); } }}><SvgCharacter type="STAFF" capColor={getStaffCapColor(s.staffOrchard.level)} />{s.staffOrchard.state === 'SLEEP' && <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-2xl animate-pulse">💤</div>}<div className="absolute bottom-[45px] left-1/2 -translate-x-1/2 w-6 flex flex-col-reverse items-center gap-[-10px]">{s.staffOrchard.holding.map((t, i) => <div key={i} className="w-6 h-6 -mb-4 drop-shadow-md"><SvgItem type={t} /></div>)}</div></div>}
+                    {s.staffCocoa.active && s.unlockedChocolate && <div className="absolute w-[60px] h-[60px] transition-transform duration-75 cursor-pointer" style={{ left: s.staffCocoa.x - 10, top: s.staffCocoa.y, zIndex: Math.floor(s.staffCocoa.y) }} onClick={(e) => { e.stopPropagation(); if (s.staffCocoa.state === 'SLEEP') { s.staffCocoa.stamina = 100; s.staffCocoa.state = 'IDLE'; if (sfxOn) playSfx('pop'); spawnText(s.staffCocoa.x, s.staffCocoa.y - 40, "WAKE UP!"); } }}><SvgCharacter type="STAFF" capColor={getStaffCapColor(s.staffCocoa.level)} />{s.staffCocoa.state === 'SLEEP' && <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-2xl animate-pulse">💤</div>}<div className="absolute bottom-[45px] left-1/2 -translate-x-1/2 w-6 flex flex-col-reverse items-center gap-[-10px]">{s.staffCocoa.holding.map((t, i) => <div key={i} className="w-6 h-6 -mb-4 drop-shadow-md"><SvgItem type={t} /></div>)}</div></div>}
 
                     {s.salesStaffBread.active && <div className="absolute w-[60px] h-[60px]" style={{ left: 70, top: 400, zIndex: 400 }}>
                         <SvgCharacter type="SALES" isSelling={s.salesStaffBread.state === 'SELLING'} />
@@ -2401,12 +2745,39 @@ const GameSandbox: FC = () => {
                         </div>
                     </div>
 
+                    {/* TRASH GUIDE ARROW */}
+                    {s.inventory.includes('TRASH_BAG') && (
+                        <div className="absolute w-[100px] h-[100px] pointer-events-none flex items-center justify-center z-[1000]" style={{ left: s.player.x - 50, top: s.player.y - 50 }}>
+                            <div className="w-full h-full flex items-center justify-center animate-pulse" style={{ transform: `rotate(${Math.atan2(s.trashZone.y - s.player.y, s.trashZone.x - s.player.x) * 180 / Math.PI}deg)` }}>
+                                <div className="absolute right-0 text-4xl text-red-500 font-black drop-shadow-md">➤</div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* PARTICLES */}
                     {s.floatingTexts.map(t => <div key={t.id} className="absolute font-black text-green-400 text-xl drop-shadow-md z-[500] pointer-events-none" style={{ left: t.x, top: t.y, opacity: t.life / 60 }}>{t.text}</div>)}
                     {s.particles.map(p => <div key={p.id} className="absolute w-4 h-4 rounded-full z-[500] pointer-events-none" style={{ left: p.x, top: p.y, backgroundColor: p.color, opacity: p.life / 60 }} />)}
                 </div>
 
                 {/* --- UI OVERLAY (Fixed to Screen) --- */}
+                {/* NEWS TICKER */}
+                {s.marketTrend.type !== 'NORMAL' && (
+                    <div className="absolute top-20 left-0 w-full bg-black/80 text-white py-2 overflow-hidden z-40 border-y-2 border-yellow-500 pointer-events-none">
+                        <div className="whitespace-nowrap animate-[ticker_10s_linear_infinite] font-bold text-yellow-400 text-lg">
+                            🚨 NEWS FLASH: {s.marketTrend.news} 🚨  ---  {s.marketTrend.news}  ---  {s.marketTrend.news}
+                        </div>
+                        <style>{`@keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }`}</style>
+                    </div>
+                )}
+
+                {/* RENT TIMER */}
+                <div className="absolute top-16 left-1/2 -translate-x-1/2 bg-slate-800/80 px-3 py-1 rounded-full border border-slate-600 flex items-center gap-2 z-40 pointer-events-none">
+                    <span className="text-xs text-slate-300 font-bold">RENT DUE:</span>
+                    <div className="w-24 h-2 bg-slate-700 rounded-full overflow-hidden">
+                        <div className="h-full bg-red-500 transition-all duration-1000" style={{ width: `${(s.rentTimer / 36000) * 100}%` }}></div>
+                    </div>
+                </div>
+
                 <div className="absolute top-4 left-4 bg-white/90 px-4 py-2 rounded-full border-2 border-slate-200 shadow-xl flex items-center gap-2 z-[900] pointer-events-auto">
                     <div className="w-4 h-4 rounded-full bg-yellow-400 border border-yellow-600" />
                     <span className="font-black text-lg text-slate-800">${s.money}</span>
@@ -2565,6 +2936,9 @@ const GameSandbox: FC = () => {
 
                                     {/* MACHINE QUEUE */}
                                     <div className="bg-slate-100 p-2 rounded-lg shrink-0"><div className="flex justify-between text-xs font-bold text-slate-600 mb-1"><span>Machine Queue: {CONFIG.machineQueue[s.lvlMachineQueue].val} ➔ {s.lvlMachineQueue < 6 ? CONFIG.machineQueue[s.lvlMachineQueue + 1].val : 'MAX'}</span></div><button disabled={s.lvlMachineQueue >= 6} onClick={() => buyUpgrade('machineQueue')} className={`w-full py-2 rounded-lg font-black text-white ${s.lvlMachineQueue >= 6 ? 'bg-gray-400' : s.money >= CONFIG.machineQueue[s.lvlMachineQueue + 1].cost ? 'bg-green-500 shadow-md' : 'bg-red-400 opacity-50'}`}>{s.lvlMachineQueue >= 6 ? "MAX" : `$${CONFIG.machineQueue[s.lvlMachineQueue + 1].cost}`}</button></div>
+
+                                    {/* COFFEE MACHINE */}
+                                    <div className="bg-slate-100 p-2 rounded-lg shrink-0"><div className="flex justify-between text-xs font-bold text-slate-600 mb-1"><span>Coffee Machine: Lvl {s.lvlCoffeeMachine + 1} ➔ {s.lvlCoffeeMachine < 2 ? 'Lvl ' + (s.lvlCoffeeMachine + 2) : 'MAX'}</span></div><button disabled={s.lvlCoffeeMachine >= 2} onClick={() => buyUpgrade('coffeeMachine')} className={`w-full py-2 rounded-lg font-black text-white ${s.lvlCoffeeMachine >= 2 ? 'bg-gray-400' : s.money >= CONFIG.coffeeMachine[s.lvlCoffeeMachine + 1].cost ? 'bg-green-500 shadow-md' : 'bg-red-400 opacity-50'}`}>{s.lvlCoffeeMachine >= 2 ? "MAX" : `$${CONFIG.coffeeMachine[s.lvlCoffeeMachine + 1].cost}`}</button></div>
                                 </div>
                             </div>
                         )}
@@ -2573,9 +2947,72 @@ const GameSandbox: FC = () => {
                                 <div className="flex gap-2 mb-4 border-b-2 border-slate-200 pb-2">
                                     <button onClick={() => setSettingsTab('OPTIONS')} className={`flex-1 py-2 font-black text-sm rounded-lg ${settingsTab === 'OPTIONS' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-100'}`}>OPTIONS</button>
                                     <button onClick={() => setSettingsTab('ACHIEVEMENTS')} className={`flex-1 py-2 font-black text-sm rounded-lg ${settingsTab === 'ACHIEVEMENTS' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-100'}`}>ACHIEVEMENTS</button>
+                                    <button onClick={() => setSettingsTab('ABOUT')} className={`flex-1 py-2 font-black text-sm rounded-lg ${settingsTab === 'ABOUT' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-100'}`}>ABOUT</button>
                                 </div>
 
-                                {settingsTab === 'OPTIONS' ? (
+                                {settingsTab === 'ABOUT' ? (
+                                    <div className="flex flex-col h-full">
+                                        {!aboutSubTab ? (
+                                            <div className="flex flex-col gap-2">
+                                                <button onClick={() => setAboutSubTab('BASICS')} className="w-full py-3 bg-blue-100 text-blue-800 rounded-xl font-bold border-2 border-blue-200 hover:bg-blue-200">BASICS 🎮</button>
+                                                <button onClick={() => setAboutSubTab('STAFF')} className="w-full py-3 bg-green-100 text-green-800 rounded-xl font-bold border-2 border-green-200 hover:bg-green-200">STAFF 👷</button>
+                                                <button onClick={() => setAboutSubTab('MACHINES')} className="w-full py-3 bg-orange-100 text-orange-800 rounded-xl font-bold border-2 border-orange-200 hover:bg-orange-200">MACHINES ⚙️</button>
+                                                <button onClick={() => setAboutSubTab('UPGRADES')} className="w-full py-3 bg-purple-100 text-purple-800 rounded-xl font-bold border-2 border-purple-200 hover:bg-purple-200">UPGRADES 🚀</button>
+                                                <button onClick={() => setAboutSubTab('CREDITS')} className="w-full py-3 bg-slate-100 text-slate-800 rounded-xl font-bold border-2 border-slate-200 hover:bg-slate-200">CREDITS ❤️</button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col h-full">
+                                                <button onClick={() => setAboutSubTab(null)} className="mb-2 text-left font-bold text-slate-500 hover:text-slate-800">⬅ BACK</button>
+                                                <div className="flex-1 overflow-y-auto text-left text-sm text-slate-600 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                                                    {aboutSubTab === 'BASICS' && (
+                                                        <>
+                                                            <h3 className="font-black text-slate-800 mb-2">HOW TO PLAY</h3>
+                                                            <p className="mb-2"><strong>Move:</strong> Use Joystick or Arrow Keys.</p>
+                                                            <p className="mb-2"><strong>Harvest:</strong> Walk near ripe crops to collect them.</p>
+                                                            <p className="mb-2"><strong>Sell:</strong> Walk to the Truck to sell products.</p>
+                                                            <p className="mb-2"><strong>Economy:</strong> Watch the News Ticker for price changes and pay your Daily Rent!</p>
+                                                            <p><strong>Goal:</strong> Earn money, unlock zones, and build a tycoon empire!</p>
+                                                        </>
+                                                    )}
+                                                    {aboutSubTab === 'STAFF' && (
+                                                        <>
+                                                            <h3 className="font-black text-slate-800 mb-2">STAFF MANAGEMENT</h3>
+                                                            <p className="mb-2"><strong>Hiring:</strong> Hire staff to automate harvesting and selling.</p>
+                                                            <p className="mb-2"><strong>Stamina:</strong> Staff get tired! If they sleep (Zzz), click them to wake up.</p>
+                                                            <p><strong>Managers:</strong> Equip managers for global bonuses like speed and capacity.</p>
+                                                        </>
+                                                    )}
+                                                    {aboutSubTab === 'MACHINES' && (
+                                                        <>
+                                                            <h3 className="font-black text-slate-800 mb-2">MACHINES</h3>
+                                                            <p className="mb-2"><strong>Processing:</strong> Machines turn raw crops into valuable products.</p>
+                                                            <p className="mb-2"><strong>Queues:</strong> Upgrade machine queues to stack more items.</p>
+                                                            <p className="mb-2"><strong>Maintenance:</strong> Machines produce trash. Click to clean them and dump trash in the bin!</p>
+                                                            <p><strong>Automation:</strong> Staff will automatically feed machines and collect products.</p>
+                                                        </>
+                                                    )}
+                                                    {aboutSubTab === 'UPGRADES' && (
+                                                        <>
+                                                            <h3 className="font-black text-slate-800 mb-2">UPGRADES</h3>
+                                                            <p className="mb-2"><strong>Stack:</strong> Carry more items at once.</p>
+                                                            <p className="mb-2"><strong>Speed:</strong> Move faster.</p>
+                                                            <p><strong>Coffee Machine:</strong> Helps staff recover stamina faster.</p>
+                                                        </>
+                                                    )}
+                                                    {aboutSubTab === 'CREDITS' && (
+                                                        <>
+                                                            <h3 className="font-black text-slate-800 mb-2">CREDITS</h3>
+                                                            <p className="mb-2"><strong>Created by:</strong> DavogStudios</p>
+                                                            <p className="mb-2"><strong>Engine:</strong> React + Tailwind</p>
+                                                            <p>Thanks for playing!</p>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                        <button onClick={() => setShowSettings(false)} className="w-full py-3 mt-4 bg-slate-800 text-white rounded-xl font-bold border-b-4 border-slate-950 active:scale-95 shrink-0">CLOSE</button>
+                                    </div>
+                                ) : settingsTab === 'OPTIONS' ? (
                                     <>
                                         <h2 className="font-black text-2xl text-slate-800 mb-4">SETTINGS</h2>
                                         <button onClick={() => setSoundOn(!soundOn)} className={`w-full py-3 mb-4 rounded-xl font-bold border-2 ${soundOn ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}`}>SOUND: {soundOn ? "ON 🔊" : "OFF 🔇"}</button>
