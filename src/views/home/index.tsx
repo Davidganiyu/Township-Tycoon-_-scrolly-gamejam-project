@@ -862,16 +862,8 @@ const GameSandbox: FC = () => {
             const s = gs.current;
             s.cheatBuffer += e.key.toLowerCase();
             if (s.cheatBuffer.length > 20) s.cheatBuffer = s.cheatBuffer.slice(-20);
-            if (s.cheatBuffer.endsWith("davogstudios")) {
-                s.money += 1000000;
-                s.lifetime.totalMoney += 1000000;
-                s.gems += 100000;
-                s.unlockedThemes = ['DEFAULT', 'NIGHT', 'SNOW', 'MARS'];
-                setAlertMsg("Davog welcome to developer mode");
-                if (sfxOn) playSfx('upgrade');
-                spawnConfetti(s.player.x, s.player.y);
-                s.cheatBuffer = ""; // Reset to prevent double trigger
-            }
+            if (s.cheatBuffer.length > 20) s.cheatBuffer = s.cheatBuffer.slice(-20);
+            // Cheat Code Removed for Submission
         };
         const handleKeyUp = (e: KeyboardEvent) => {
             if (e.key === 'ArrowUp') gs.current.keys.up = false;
@@ -3002,8 +2994,8 @@ const GameSandbox: FC = () => {
                                                     {aboutSubTab === 'CREDITS' && (
                                                         <>
                                                             <h3 className="font-black text-slate-800 mb-2">CREDITS</h3>
-                                                            <p className="mb-2"><strong>Created by:</strong> DavogStudios</p>
-                                                            <p className="mb-2"><strong>Engine:</strong> React + Tailwind</p>
+                                                            <p className="mb-2"><strong>Developed for Superteam x Scrolly Game Jam</strong></p>
+                                                            <p><strong>Tools:</strong> React + Tailwind</p>
                                                             <p>Thanks for playing!</p>
                                                         </>
                                                     )}
