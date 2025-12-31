@@ -109,7 +109,7 @@ const CONFIG = {
     ],
 
     // Global Upgrades
-    coffeeMachine: [{ val: 0.5, cost: 2000 }, { val: 0.8, cost: 5000 }, { val: 1.2, cost: 10000 }], // Stamina Regen Rate
+    coffeeMachine: [{ val: 0.1, cost: 2000 }, { val: 0.3, cost: 5000 }, { val: 0.6, cost: 10000 }], // Stamina Regen Rate
 
     ACHIEVEMENTS: [
         { id: 'first_steps', name: 'First Steps', desc: 'Harvest your first crop', reward: '100 Gems', condition: (s: any) => s.lifetime.totalMoney > 0 },
@@ -672,7 +672,7 @@ type DroppedItem = { id: number; type: ItemType; x: number; y: number; timer: nu
 type StaffState = { active: boolean; level: number; x: number; y: number; targetX: number; targetY: number; state: 'IDLE' | 'MOVING' | 'HARVESTING' | 'DEPOSITING' | 'SLEEP' | 'TIRED' | 'DRINKING'; timer: number; holding: ItemType[]; maxHold: number; stamina: number; maxStamina: number; };
 type Cow = { id: number; x: number; y: number; state: 'IDLE' | 'EATING' | 'MILKING' | 'READY'; timer: number; milk: number };
 type MachineState = { x: number; y: number; processing: boolean; timer: number; queue: number; output: Array<{ id: number, x: number, y: number }>; trash: number; jammed: boolean; };
-type SalesStaffState = { active: boolean; x: number; y: number; timer: number; state: 'IDLE' | 'SELLING' };
+type SalesStaffState = { active: boolean; x: number; y: number; timer: number; state: 'IDLE' | 'SELLING' | 'SLEEP' | 'TIRED' | 'DRINKING'; stamina: number; maxStamina: number; };
 
 // --- MAIN COMPONENT ---
 
@@ -743,6 +743,7 @@ const GameSandbox: FC = () => {
         managers: {} as Record<string, number>, // id -> level
         activeManagers: { production: null, logistics: null, sales: null } as { production: string | null, logistics: string | null, sales: string | null },
         marketTrend: { type: 'NORMAL', resource: null, multiplier: 1, timer: 0, news: null } as { type: 'NORMAL' | 'SURGE' | 'CRASH', resource: ItemType | null, multiplier: number, timer: number, news: string | null },
+        rushHour: { active: false, timer: 0 },
         rentTimer: 36000, // 10 minutes at 60fps
 
         // Themes
@@ -760,11 +761,11 @@ const GameSandbox: FC = () => {
         staffCocoa: { active: false, level: 0, x: 1540, y: 100, targetX: 1540, targetY: 100, state: 'IDLE', timer: 0, holding: [] as ItemType[], maxHold: 1, stamina: 100, maxStamina: 100 } as StaffState,
 
         // SALES STAFF
-        salesStaffBread: { active: false, x: 100, y: 460, timer: 0, state: 'IDLE' } as SalesStaffState,
-        salesStaffKetchup: { active: false, x: 460, y: 460, timer: 0, state: 'IDLE' } as SalesStaffState,
-        salesStaffCheese: { active: false, x: 820, y: 460, timer: 0, state: 'IDLE' } as SalesStaffState,
-        salesStaffJuice: { active: false, x: 1180, y: 460, timer: 0, state: 'IDLE' } as SalesStaffState,
-        salesStaffChocolate: { active: false, x: 1540, y: 460, timer: 0, state: 'IDLE' } as SalesStaffState,
+        salesStaffBread: { active: false, x: 100, y: 460, timer: 0, state: 'IDLE', stamina: 100, maxStamina: 100 } as SalesStaffState,
+        salesStaffKetchup: { active: false, x: 460, y: 460, timer: 0, state: 'IDLE', stamina: 100, maxStamina: 100 } as SalesStaffState,
+        salesStaffCheese: { active: false, x: 820, y: 460, timer: 0, state: 'IDLE', stamina: 100, maxStamina: 100 } as SalesStaffState,
+        salesStaffJuice: { active: false, x: 1180, y: 460, timer: 0, state: 'IDLE', stamina: 100, maxStamina: 100 } as SalesStaffState,
+        salesStaffChocolate: { active: false, x: 1540, y: 460, timer: 0, state: 'IDLE', stamina: 100, maxStamina: 100 } as SalesStaffState,
 
         truck: {
             x: -200, y: 530,
@@ -1046,11 +1047,11 @@ const GameSandbox: FC = () => {
         s.staffWheat = { active: false, level: 0, x: 820, y: 100, targetX: 820, targetY: 100, state: 'IDLE', timer: 0, holding: [], maxHold: 1, stamina: 100, maxStamina: 100 } as StaffState;
         s.staffOrchard = { active: false, level: 0, x: 1180, y: 100, targetX: 1180, targetY: 100, state: 'IDLE', timer: 0, holding: [], maxHold: 1, stamina: 100, maxStamina: 100 } as StaffState;
         s.staffCocoa = { active: false, level: 0, x: 1540, y: 100, targetX: 1540, targetY: 100, state: 'IDLE', timer: 0, holding: [], maxHold: 1, stamina: 100, maxStamina: 100 } as StaffState;
-        s.salesStaffBread = { active: false, x: 100, y: 460, timer: 0, state: 'IDLE' };
-        s.salesStaffKetchup = { active: false, x: 460, y: 460, timer: 0, state: 'IDLE' };
-        s.salesStaffCheese = { active: false, x: 820, y: 460, timer: 0, state: 'IDLE' };
-        s.salesStaffJuice = { active: false, x: 1180, y: 460, timer: 0, state: 'IDLE' };
-        s.salesStaffChocolate = { active: false, x: 1540, y: 460, timer: 0, state: 'IDLE' };
+        s.salesStaffBread = { active: false, x: 100, y: 460, timer: 0, state: 'IDLE', stamina: 100, maxStamina: 100 };
+        s.salesStaffKetchup = { active: false, x: 460, y: 460, timer: 0, state: 'IDLE', stamina: 100, maxStamina: 100 };
+        s.salesStaffCheese = { active: false, x: 820, y: 460, timer: 0, state: 'IDLE', stamina: 100, maxStamina: 100 };
+        s.salesStaffJuice = { active: false, x: 1180, y: 460, timer: 0, state: 'IDLE', stamina: 100, maxStamina: 100 };
+        s.salesStaffChocolate = { active: false, x: 1540, y: 460, timer: 0, state: 'IDLE', stamina: 100, maxStamina: 100 };
 
         // Reset Machines & Desks
         s.machineBakery = { x: 250, y: 280, processing: false, timer: 0, queue: 0, output: [], trash: 0, jammed: false };
@@ -1536,28 +1537,31 @@ const GameSandbox: FC = () => {
             if (m.processing && !m.jammed) {
                 m.timer--;
                 if (m.timer <= 0) {
-                    m.processing = false;
-                    m.output.push({ id: Date.now() + Math.random(), x: m.x - 30, y: m.y + 20 });
-                    if (sfxOn) playSfx('pop');
+                    if (m.output.length < CONFIG.maxMachineOutput) {
+                        m.processing = false;
+                        m.output.push({ id: Date.now() + Math.random(), x: m.x - 30, y: m.y + 20 });
 
-                    // Trash Generation (10% chance per product)
-                    if (Math.random() < 0.1) {
-                        m.trash++;
-                        if (m.trash >= 5) {
-                            m.jammed = true;
-                            setAlertMsg("MACHINE JAMMED! Click on the machine to fix it.");
-                            if (sfxOn) playSfx('pop'); // Jam sound
+                        // Trash Generation (10% chance per product)
+                        if (Math.random() < 0.1) {
+                            m.trash++;
+                            if (m.trash >= 5) {
+                                m.jammed = true;
+                                setAlertMsg("MACHINE JAMMED! Click on the machine to fix it.");
+                            }
                         }
-                    }
 
-                    // Start next if queue > 0
-                    if (m.queue > 0 && !m.jammed) {
-                        m.queue--;
-                        m.processing = true;
-                        // Speed Bonus Logic
-                        const bonus = getManagerBonus('PRODUCTION');
-                        // New Speed = Base Speed / (1 + Bonus)
-                        m.timer = Math.floor(speed / (1 + bonus));
+                        // Start next if queue > 0
+                        if (m.queue > 0 && !m.jammed) {
+                            m.queue--;
+                            m.processing = true;
+                            // Speed Bonus Logic
+                            const bonus = getManagerBonus('PRODUCTION');
+                            // New Speed = Base Speed / (1 + Bonus)
+                            m.timer = Math.floor(speed / (1 + bonus));
+                        }
+                    } else {
+                        // Output full! Wait until space clears.
+                        m.timer = 0; // Keep timer at 0 so it tries again next tick
                     }
                 }
             } else if (m.queue > 0 && !m.processing && !m.jammed) {
@@ -1591,6 +1595,12 @@ const GameSandbox: FC = () => {
         const updateStaff = (bot: StaffState, targetType: 'CORN' | 'TOMATO' | 'COCOA', machine: MachineState, queueProp: 'queue') => {
             if (!bot.active) return;
 
+            // Universal Stamina Check
+            if (bot.stamina <= 0 && bot.state !== 'TIRED' && bot.state !== 'DRINKING' && bot.state !== 'SLEEP') {
+                bot.state = 'TIRED';
+                return;
+            }
+
             // STAMINA LOGIC
             if (bot.state === 'SLEEP') {
                 bot.stamina += 0.1;
@@ -1600,7 +1610,7 @@ const GameSandbox: FC = () => {
             if (bot.state === 'TIRED') {
                 const coffeeX = 350; const coffeeY = 200;
                 const dist = Math.hypot(coffeeX - bot.x, coffeeY - bot.y);
-                if (dist < 10) { bot.state = 'DRINKING'; bot.timer = 120; }
+                if (dist < 10) { bot.state = 'DRINKING'; bot.timer = 600; }
                 else { bot.x += ((coffeeX - bot.x) / dist) * 1.5; bot.y += ((coffeeY - bot.y) / dist) * 1.5; }
                 return;
             }
@@ -1640,9 +1650,11 @@ const GameSandbox: FC = () => {
                 // Go to machine
                 const dist = Math.hypot(machine.x - bot.x, machine.y - bot.y);
                 if (dist < 10) {
-                    if (machine[queueProp] + bot.holding.length <= maxQueue) {
-                        machine[queueProp] += bot.holding.length;
-                        bot.holding = [];
+                    const space = maxQueue - machine[queueProp];
+                    if (space > 0) {
+                        const toAdd = Math.min(space, bot.holding.length);
+                        machine[queueProp] += toAdd;
+                        bot.holding.splice(0, toAdd);
                     }
                 } else {
                     bot.x += ((machine.x - bot.x) / dist) * 1.5;
@@ -1659,6 +1671,12 @@ const GameSandbox: FC = () => {
         const updateStaffWheat = (bot: StaffState) => {
             if (!bot.active) return;
 
+            // Universal Stamina Check
+            if (bot.stamina <= 0 && bot.state !== 'TIRED' && bot.state !== 'DRINKING' && bot.state !== 'SLEEP') {
+                bot.state = 'TIRED';
+                return;
+            }
+
             // STAMINA LOGIC
             if (bot.state === 'SLEEP') {
                 bot.stamina += 0.1;
@@ -1668,7 +1686,7 @@ const GameSandbox: FC = () => {
             if (bot.state === 'TIRED') {
                 const coffeeX = 350; const coffeeY = 200;
                 const dist = Math.hypot(coffeeX - bot.x, coffeeY - bot.y);
-                if (dist < 10) { bot.state = 'DRINKING'; bot.timer = 120; }
+                if (dist < 10) { bot.state = 'DRINKING'; bot.timer = 600; }
                 else { bot.x += ((coffeeX - bot.x) / dist) * 1.5; bot.y += ((coffeeY - bot.y) / dist) * 1.5; }
                 return;
             }
@@ -1694,9 +1712,18 @@ const GameSandbox: FC = () => {
                 const machine = s.machineCheese;
                 const dist = Math.hypot(machine.x - bot.x, machine.y - bot.y);
                 if (dist < 10) {
-                    if (machine.queue + holdingMilk <= maxQueue) {
-                        machine.queue += holdingMilk;
-                        bot.holding = bot.holding.filter((i: string) => i !== 'MILK');
+                    const space = maxQueue - machine.queue;
+                    if (space > 0) {
+                        const toAdd = Math.min(space, holdingMilk);
+                        machine.queue += toAdd;
+                        let removed = 0;
+                        bot.holding = bot.holding.filter(i => {
+                            if (i === 'MILK' && removed < toAdd) {
+                                removed++;
+                                return false;
+                            }
+                            return true;
+                        });
                     }
                 } else {
                     bot.x += ((machine.x - bot.x) / dist) * 1.5;
@@ -1780,6 +1807,12 @@ const GameSandbox: FC = () => {
         const updateStaffOrchard = (bot: StaffState) => {
             if (!bot.active) return;
 
+            // Universal Stamina Check
+            if (bot.stamina <= 0 && bot.state !== 'TIRED' && bot.state !== 'DRINKING' && bot.state !== 'SLEEP') {
+                bot.state = 'TIRED';
+                return;
+            }
+            // ... (existing orchard logic) ...
             // STAMINA LOGIC
             if (bot.state === 'SLEEP') {
                 bot.stamina += 0.1;
@@ -1789,7 +1822,7 @@ const GameSandbox: FC = () => {
             if (bot.state === 'TIRED') {
                 const coffeeX = 350; const coffeeY = 200;
                 const dist = Math.hypot(coffeeX - bot.x, coffeeY - bot.y);
-                if (dist < 10) { bot.state = 'DRINKING'; bot.timer = 120; }
+                if (dist < 10) { bot.state = 'DRINKING'; bot.timer = 600; }
                 else { bot.x += ((coffeeX - bot.x) / dist) * 1.5; bot.y += ((coffeeY - bot.y) / dist) * 1.5; }
                 return;
             }
@@ -1804,40 +1837,52 @@ const GameSandbox: FC = () => {
                 bot.stamina -= 0.05;
                 if (bot.stamina <= 0) { bot.stamina = 0; bot.state = 'TIRED'; return; }
             }
+
             const effectiveMaxHold = bot.maxHold + logBonus;
-            const holdingOrange = bot.holding.filter((i: string) => i === 'ORANGE').length;
             const space = effectiveMaxHold - bot.holding.length;
 
-            // 1. If holding Orange, go to Machine
-            if (holdingOrange > 0) {
-                const machine = s.machineJuice;
-                const dist = Math.hypot(machine.x - bot.x, machine.y - bot.y);
-                if (dist < 10) {
-                    if (machine.queue + holdingOrange <= maxQueue) {
-                        machine.queue += holdingOrange;
-                        bot.holding = bot.holding.filter((i: string) => i !== 'ORANGE');
-                    }
-                } else {
-                    bot.x += ((machine.x - bot.x) / dist) * 1.5;
-                    bot.y += ((machine.y - bot.y) / dist) * 1.5;
-                }
-                return;
-            }
-
-            // 2. If has space, look for Dropped Oranges
             if (space > 0) {
-                // Priority: Collect Dropped Oranges
+                // Find Ripe Tree
+                let targetTree: Tree | null = null;
+                let minDist = 9999;
+                s.trees.forEach(t => {
+                    if (t.state === 'RIPE') {
+                        const d = Math.hypot(t.x - bot.x, t.y - bot.y);
+                        if (d < minDist) { minDist = d; targetTree = t; }
+                    }
+                });
+
+                if (targetTree) {
+                    const tt = targetTree as Tree;
+                    const dist = Math.hypot(tt.x - bot.x, tt.y - bot.y);
+                    if (dist < 5) {
+                        tt.state = 'SHAKING'; tt.timer = 0;
+                        // Staff waits for drop? No, just shakes.
+                        // But to collect, needs to wait for drop.
+                        // Simplified: Staff shakes, then instantly collects 3 oranges if space allows
+                        // Actually, let's stick to the player logic: Shake -> Drop -> Collect
+                        // For staff, maybe just Shake -> Instant Collect to save complexity?
+                        // Let's make them Shake, then wait a bit, then collect.
+                        // For now, simple: Shake.
+                    } else {
+                        bot.x += ((tt.x - bot.x) / dist) * 1.5;
+                        bot.y += ((tt.y - bot.y) / dist) * 1.5;
+                    }
+                    return;
+                }
+
+                // Collect Dropped Items
                 let targetItem: DroppedItem | null = null;
-                let minDistItem = 9999;
-                s.droppedItems.forEach(item => {
-                    const d = Math.hypot(item.x - bot.x, item.y - bot.y);
-                    if (d < minDistItem) { minDistItem = d; targetItem = item; }
+                let minItemDist = 9999;
+                s.droppedItems.forEach(i => {
+                    const d = Math.hypot(i.x - bot.x, i.y - bot.y);
+                    if (d < minItemDist) { minItemDist = d; targetItem = i; }
                 });
 
                 if (targetItem) {
                     const ti = targetItem as DroppedItem;
                     const dist = Math.hypot(ti.x - bot.x, ti.y - bot.y);
-                    if (dist < 5) {
+                    if (dist < 10) {
                         bot.holding.push(ti.type);
                         s.droppedItems = s.droppedItems.filter(i => i.id !== ti.id);
                     } else {
@@ -1846,30 +1891,80 @@ const GameSandbox: FC = () => {
                     }
                     return;
                 }
-
-                // Else Shake Ripe Trees
-                let targetTree: Tree | null = null;
-                let minDistTree = 9999;
-                s.trees.forEach(t => {
-                    if (t.state === 'RIPE') {
-                        const d = Math.hypot(t.x - bot.x, t.y - bot.y);
-                        if (d < minDistTree) { minDistTree = d; targetTree = t; }
+            } else {
+                // Go to Machine
+                const machine = s.machineJuice;
+                const dist = Math.hypot(machine.x - bot.x, machine.y - bot.y);
+                if (dist < 10) {
+                    const space = maxQueue - machine.queue;
+                    if (space > 0) {
+                        const toAdd = Math.min(space, bot.holding.length);
+                        machine.queue += toAdd;
+                        bot.holding.splice(0, toAdd);
                     }
-                });
-
-                if (targetTree) {
-                    const tt = targetTree as Tree;
-                    const dist = Math.hypot(tt.x - bot.x, tt.y - bot.y);
-                    if (dist < 50) { // Shake distance
-                        tt.state = 'SHAKING'; tt.timer = 0;
-                    } else {
-                        bot.x += ((tt.x - bot.x) / dist) * 1.5;
-                        bot.y += ((tt.y - bot.y) / dist) * 1.5;
-                    }
+                } else {
+                    bot.x += ((machine.x - bot.x) / dist) * 1.5;
+                    bot.y += ((machine.y - bot.y) / dist) * 1.5;
                 }
             }
         };
+
         if (s.unlockedOrchard) updateStaffOrchard(s.staffOrchard);
+
+        // Update Sales Staff (Stamina & Movement)
+        const updateSalesStaff = (bot: SalesStaffState, homeX: number, homeY: number) => {
+            if (!bot.active) return;
+
+            // Universal Stamina Check
+            if (bot.stamina <= 0 && bot.state !== 'TIRED' && bot.state !== 'DRINKING' && bot.state !== 'SLEEP') {
+                bot.state = 'TIRED';
+                return;
+            }
+
+            // Stamina Recovery
+            if (bot.state === 'TIRED') {
+                const coffeeX = 350; const coffeeY = 200;
+                const dist = Math.hypot(coffeeX - bot.x, coffeeY - bot.y);
+                if (dist < 10) {
+                    bot.state = 'DRINKING';
+                    bot.timer = 600;
+                }
+                else {
+                    bot.x += ((coffeeX - bot.x) / dist) * 1.5;
+                    bot.y += ((coffeeY - bot.y) / dist) * 1.5;
+                }
+                return;
+            }
+            if (bot.state === 'DRINKING') {
+                bot.timer--;
+                const regenRate = CONFIG.coffeeMachine[s.lvlCoffeeMachine]?.val || 0.5;
+                bot.stamina += regenRate;
+                if (bot.stamina >= 100 || bot.timer <= 0) {
+                    bot.stamina = 100;
+                    bot.state = 'IDLE';
+                }
+                return;
+            }
+
+            // Return to Post if IDLE
+            if (bot.state === 'IDLE') {
+                const dist = Math.hypot(homeX - bot.x, homeY - bot.y);
+                if (dist > 5) {
+                    bot.x += ((homeX - bot.x) / dist) * 1.5;
+                    bot.y += ((homeY - bot.y) / dist) * 1.5;
+                } else {
+                    bot.x = homeX;
+                    bot.y = homeY;
+                }
+            }
+        };
+
+        updateSalesStaff(s.salesStaffBread, 100, 460);
+        if (s.unlockedKetchup) updateSalesStaff(s.salesStaffKetchup, 460, 460);
+        if (s.unlockedDairy) updateSalesStaff(s.salesStaffCheese, 820, 460);
+        if (s.unlockedOrchard) updateSalesStaff(s.salesStaffJuice, 1180, 460);
+        if (s.unlockedChocolate) updateSalesStaff(s.salesStaffChocolate, 1540, 460);
+
 
         // --- DESK STOCKING ---
         const stockDesk = (desk: any, itemType: ItemType, x: number, y: number) => {
@@ -1896,7 +1991,9 @@ const GameSandbox: FC = () => {
         let manualSellAction = false;
 
         if (s.truck.state === 'IDLE') {
-            if (Math.random() < 0.01) {
+            // During Rush Hour, truck returns immediately (90% chance per tick)
+            const spawnChance = s.rushHour.active ? 0.9 : 0.01;
+            if (Math.random() < spawnChance) {
                 s.truck.state = 'DRIVING';
                 s.truck.x = -180;
 
@@ -1956,11 +2053,17 @@ const GameSandbox: FC = () => {
                     s.truck.state = 'IDLE';
                 } else {
                     s.truck.state = 'WAITING';
-                    // Base Wait 30s + Bonus
-                    s.truck.waitTimer = 60 * (30 + salesBonus);
+                    // Base Wait 30s + Bonus (Rush Hour = 5s)
+                    if (s.rushHour.active) s.truck.waitTimer = 300;
+                    else s.truck.waitTimer = 60 * (30 + salesBonus);
                 }
             } else {
-                s.truck.x += dist > 0 ? 2.5 : -2.5;
+                const speed = s.rushHour.active ? 12.5 : 2.5;
+                if (Math.abs(dist) <= speed) {
+                    s.truck.x = s.truck.targetX;
+                } else {
+                    s.truck.x += dist > 0 ? speed : -speed;
+                }
             }
         }
         else if (s.truck.state === 'WAITING') {
@@ -2008,7 +2111,7 @@ const GameSandbox: FC = () => {
                     }
 
                     // Staff Selling (Delayed)
-                    if (salesStaff.active && desk.stock >= requiredAmount) {
+                    if (salesStaff.active && desk.stock >= requiredAmount && (salesStaff.state === 'IDLE' || salesStaff.state === 'SELLING')) {
                         if (salesStaff.state === 'IDLE') {
                             salesStaff.state = 'SELLING';
                             // Sales Bonus reduces sales delay
@@ -2016,6 +2119,14 @@ const GameSandbox: FC = () => {
                             // New Delay = Base Delay / (1 + Bonus/100)
                             salesStaff.timer = CONFIG.salesDelay;
                         } else if (salesStaff.state === 'SELLING') {
+                            // Stamina Drain
+                            salesStaff.stamina -= 0.05;
+                            if (salesStaff.stamina <= 0) {
+                                salesStaff.stamina = 0;
+                                salesStaff.state = 'TIRED';
+                                return false;
+                            }
+
                             salesStaff.timer--;
                             if (salesStaff.timer <= 0) {
                                 salesStaff.state = 'IDLE';
@@ -2093,6 +2204,20 @@ const GameSandbox: FC = () => {
         s.floatingTexts = s.floatingTexts.filter(t => t.life > 0);
         s.particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life--; });
         s.particles = s.particles.filter(p => p.life > 0);
+
+        s.rentTimer--;
+        if (s.rentTimer <= 0) {
+            let rent = 100;
+            if (s.unlockedKetchup) rent += 250;
+            if (s.unlockedDairy) rent += 500;
+            if (s.unlockedOrchard) rent += 1000;
+            if (s.unlockedChocolate) rent += 2000;
+
+            s.money -= rent;
+            s.rentTimer = 36000; // 10 minutes
+            setAlertMsg(`RENT PAID: -$${rent}`);
+            if (sfxOn) playSfx('pop');
+        }
 
         s.saveTimer++;
         if (s.saveTimer > 300) { s.saveTimer = 0; saveGame(AUTOSAVE_KEY); }
@@ -2209,6 +2334,31 @@ const GameSandbox: FC = () => {
                     };
                     if (sfxOn) playSfx(isSurge ? 'upgrade' : 'pop'); // Use existing sfx for now
                 }
+            }
+        }
+
+
+        // RUSH HOUR LOGIC
+        if (s.rushHour.active) {
+            s.rushHour.timer--;
+            if (s.rushHour.timer <= 0) {
+                s.rushHour.active = false;
+                setAlertMsg("Rush Hour Ended!");
+            }
+        } else {
+            // 0.02% chance per tick (~once per 80s)
+            if (Math.random() < 0.0002) {
+                s.rushHour.active = true;
+
+                // Dynamic Duration Calculation
+                let duration = 900; // Base 15s
+                if (s.achievements.includes('sales_guru')) duration += 300; // +5s
+                if (s.achievements.includes('golden_truck')) duration += 300; // +5s
+                if (s.achievements.includes('tycoon')) duration += 300; // +5s
+
+                s.rushHour.timer = duration;
+                setAlertMsg("FESTIVE RUSH HOUR! Trucks are speeding up!");
+                if (sfxOn) playSfx('upgrade');
             }
         }
     };
@@ -2367,8 +2517,8 @@ const GameSandbox: FC = () => {
                                                 {aboutSubTab === 'CREDITS' && (
                                                     <>
                                                         <h3 className="font-black text-slate-800 mb-2">CREDITS</h3>
-                                                        <p className="mb-2"><strong>Created by:</strong> DavogStudios</p>
-                                                        <p className="mb-2"><strong>Engine:</strong> React + Tailwind</p>
+                                                        <p className="mb-2"><strong>Developed for Superteam x Scrolly Game Jam</strong></p>
+                                                        <p><strong>Tools:</strong> React + Tailwind</p>
                                                         <p>Thanks for playing!</p>
                                                     </>
                                                 )}
@@ -2677,7 +2827,7 @@ const GameSandbox: FC = () => {
                     )}
 
                     {/* SALES STAFF (Sorted by Y or Fixed Z) */}
-                    {s.salesStaffChocolate.active && s.unlockedChocolate && <div className="absolute w-[60px] h-[60px]" style={{ left: 1510, top: 400, zIndex: 400 }}>
+                    {s.salesStaffChocolate.active && s.unlockedChocolate && <div className="absolute w-[60px] h-[60px]" style={{ left: s.salesStaffChocolate.x - 30, top: s.salesStaffChocolate.y - 60, zIndex: 400 }}>
                         <SvgCharacter type="SALES" isSelling={s.salesStaffChocolate.state === 'SELLING'} />
                         {s.salesStaffChocolate.state === 'SELLING' && (
                             <div className="absolute -top-4 left-0 w-full h-2 bg-slate-700 rounded-full overflow-hidden border border-white">
@@ -2696,7 +2846,7 @@ const GameSandbox: FC = () => {
                     {s.staffOrchard.active && s.unlockedOrchard && <div className="absolute w-[60px] h-[60px] transition-transform duration-75 cursor-pointer" style={{ left: s.staffOrchard.x - 10, top: s.staffOrchard.y, zIndex: Math.floor(s.staffOrchard.y) }} onClick={(e) => { e.stopPropagation(); if (s.staffOrchard.state === 'SLEEP') { s.staffOrchard.stamina = 100; s.staffOrchard.state = 'IDLE'; if (sfxOn) playSfx('pop'); spawnText(s.staffOrchard.x, s.staffOrchard.y - 40, "WAKE UP!"); } }}><SvgCharacter type="STAFF" capColor={getStaffCapColor(s.staffOrchard.level)} />{s.staffOrchard.state === 'SLEEP' && <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-2xl animate-pulse">💤</div>}<div className="absolute bottom-[45px] left-1/2 -translate-x-1/2 w-6 flex flex-col-reverse items-center gap-[-10px]">{s.staffOrchard.holding.map((t, i) => <div key={i} className="w-6 h-6 -mb-4 drop-shadow-md"><SvgItem type={t} /></div>)}</div></div>}
                     {s.staffCocoa.active && s.unlockedChocolate && <div className="absolute w-[60px] h-[60px] transition-transform duration-75 cursor-pointer" style={{ left: s.staffCocoa.x - 10, top: s.staffCocoa.y, zIndex: Math.floor(s.staffCocoa.y) }} onClick={(e) => { e.stopPropagation(); if (s.staffCocoa.state === 'SLEEP') { s.staffCocoa.stamina = 100; s.staffCocoa.state = 'IDLE'; if (sfxOn) playSfx('pop'); spawnText(s.staffCocoa.x, s.staffCocoa.y - 40, "WAKE UP!"); } }}><SvgCharacter type="STAFF" capColor={getStaffCapColor(s.staffCocoa.level)} />{s.staffCocoa.state === 'SLEEP' && <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-2xl animate-pulse">💤</div>}<div className="absolute bottom-[45px] left-1/2 -translate-x-1/2 w-6 flex flex-col-reverse items-center gap-[-10px]">{s.staffCocoa.holding.map((t, i) => <div key={i} className="w-6 h-6 -mb-4 drop-shadow-md"><SvgItem type={t} /></div>)}</div></div>}
 
-                    {s.salesStaffBread.active && <div className="absolute w-[60px] h-[60px]" style={{ left: 70, top: 400, zIndex: 400 }}>
+                    {s.salesStaffBread.active && <div className="absolute w-[60px] h-[60px]" style={{ left: s.salesStaffBread.x - 30, top: s.salesStaffBread.y - 60, zIndex: 400 }}>
                         <SvgCharacter type="SALES" isSelling={s.salesStaffBread.state === 'SELLING'} />
                         {s.salesStaffBread.state === 'SELLING' && (
                             <div className="absolute -top-4 left-0 w-full h-2 bg-slate-700 rounded-full overflow-hidden border border-white">
@@ -2704,7 +2854,7 @@ const GameSandbox: FC = () => {
                             </div>
                         )}
                     </div>}
-                    {s.salesStaffKetchup.active && s.unlockedKetchup && <div className="absolute w-[60px] h-[60px]" style={{ left: 430, top: 400, zIndex: 400 }}>
+                    {s.salesStaffKetchup.active && s.unlockedKetchup && <div className="absolute w-[60px] h-[60px]" style={{ left: s.salesStaffKetchup.x - 30, top: s.salesStaffKetchup.y - 60, zIndex: 400 }}>
                         <SvgCharacter type="SALES" isSelling={s.salesStaffKetchup.state === 'SELLING'} />
                         {s.salesStaffKetchup.state === 'SELLING' && (
                             <div className="absolute -top-4 left-0 w-full h-2 bg-slate-700 rounded-full overflow-hidden border border-white">
@@ -2712,7 +2862,7 @@ const GameSandbox: FC = () => {
                             </div>
                         )}
                     </div>}
-                    {s.salesStaffCheese.active && s.unlockedDairy && <div className="absolute w-[60px] h-[60px]" style={{ left: 790, top: 400, zIndex: 400 }}>
+                    {s.salesStaffCheese.active && s.unlockedDairy && <div className="absolute w-[60px] h-[60px]" style={{ left: s.salesStaffCheese.x - 30, top: s.salesStaffCheese.y - 60, zIndex: 400 }}>
                         <SvgCharacter type="SALES" isSelling={s.salesStaffCheese.state === 'SELLING'} />
                         {s.salesStaffCheese.state === 'SELLING' && (
                             <div className="absolute -top-4 left-0 w-full h-2 bg-slate-700 rounded-full overflow-hidden border border-white">
@@ -2720,7 +2870,7 @@ const GameSandbox: FC = () => {
                             </div>
                         )}
                     </div>}
-                    {s.salesStaffJuice.active && s.unlockedOrchard && <div className="absolute w-[60px] h-[60px]" style={{ left: 1150, top: 400, zIndex: 400 }}>
+                    {s.salesStaffJuice.active && s.unlockedOrchard && <div className="absolute w-[60px] h-[60px]" style={{ left: s.salesStaffJuice.x - 30, top: s.salesStaffJuice.y - 60, zIndex: 400 }}>
                         <SvgCharacter type="SALES" isSelling={s.salesStaffJuice.state === 'SELLING'} />
                         {s.salesStaffJuice.state === 'SELLING' && (
                             <div className="absolute -top-4 left-0 w-full h-2 bg-slate-700 rounded-full overflow-hidden border border-white">
@@ -2752,7 +2902,14 @@ const GameSandbox: FC = () => {
                 </div>
 
                 {/* --- UI OVERLAY (Fixed to Screen) --- */}
-                {/* NEWS TICKER */}
+                {/* RUSH HOUR BANNER */}
+                {s.rushHour.active && (
+                    <div className="absolute top-24 left-1/2 -translate-x-1/2 bg-gradient-to-r from-red-500 to-yellow-500 text-white px-4 py-1 rounded-full shadow-lg z-50 animate-pulse border-2 border-white">
+                        🔥 RUSH HOUR! ({Math.ceil(s.rushHour.timer / 60)}s) 🔥
+                    </div>
+                )}
+
+                {/* NEWS TICKER (Market Trends) */}
                 {s.marketTrend.type !== 'NORMAL' && (
                     <div className="absolute top-20 left-0 w-full bg-black/80 text-white py-2 overflow-hidden z-40 border-y-2 border-yellow-500 pointer-events-none">
                         <div className="whitespace-nowrap animate-[ticker_10s_linear_infinite] font-bold text-yellow-400 text-lg">
